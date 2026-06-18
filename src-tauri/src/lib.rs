@@ -4,6 +4,7 @@ use std::{
     collections::hash_map::DefaultHasher,
     fs,
     hash::{Hash, Hasher},
+    io::Read,
     path::{Path, PathBuf},
     process::Command,
     time::{SystemTime, UNIX_EPOCH},
@@ -76,6 +77,28 @@ struct DraftSummary {
 
 type AppResult<T> = Result<T, String>;
 
+const TEXT_FILE_EXTENSIONS: &[&str] = &[
+    "md",
+    "markdown",
+    "txt",
+    "text",
+    "log",
+    "json",
+    "jsonc",
+    "config",
+    "conf",
+    "cfg",
+    "ini",
+    "toml",
+    "yaml",
+    "yml",
+    "xml",
+    "csv",
+    "env",
+    "gitignore",
+    "ignore",
+];
+
 #[tauri::command]
 fn open_workspace(path: String) -> AppResult<FileNode> {
     let root = PathBuf::from(path);
@@ -101,8 +124,8 @@ fn open_path(path: String) -> AppResult<OpenPathResult> {
     }
 
     if source_path.is_file() {
-        if !is_markdown(&source_path) {
-            return Err("只能打开 .md 或 .markdown 文件".into());
+        if !is_supported_text_path(&source_path) {
+            return Err("Only supported text files can be opened.".into());
         }
 
         let workspace_path = source_path
@@ -130,8 +153,8 @@ fn read_file(path: String) -> AppResult<ReadFileResult> {
     if !file_path.is_file() {
         return Err("文件不存在".into());
     }
-    if !is_markdown(&file_path) {
-        return Err("Only .md and .markdown files are supported.".into());
+    if !is_supported_text_path(&file_path) {
+        return Err("Only supported text files can be opened.".into());
     }
     read_file_path(&file_path)
 }
@@ -141,7 +164,7 @@ fn initial_open_paths() -> Vec<String> {
     std::env::args_os()
         .skip(1)
         .map(PathBuf::from)
-        .filter(|path| path.exists() && (path.is_dir() || is_markdown(path)))
+        .filter(|path| path.exists() && (path.is_dir() || is_supported_text_path(path)))
         .map(|path| normalize_path(&path))
         .collect()
 }
@@ -284,7 +307,10 @@ fn hidden_command(program: &str) -> Command {
 
 fn read_file_path(file_path: &Path) -> AppResult<ReadFileResult> {
     let bytes = fs::read(&file_path).map_err(to_error)?;
-    let (content, encoding) = decode_text(&bytes);
+    if is_probably_binary_bytes(&bytes) {
+        return Err("This file appears to be binary and cannot be opened as text.".into());
+    }
+    let (content, encoding) = decode_text(&bytes)?;
     let modified_at = modified_at(&file_path)?;
     Ok(ReadFileResult {
         path: normalize_path(file_path),
@@ -301,8 +327,8 @@ fn save_file(path: String, content: String, expected: Option<u64>, overwrite: bo
         return Err("文件不存在，无法保存".into());
     }
 
-    if !is_markdown(&file_path) {
-        return Err("Only .md and .markdown files are supported.".into());
+    if !is_supported_text_path(&file_path) {
+        return Err("Only supported text files can be saved.".into());
     }
 
     let current_modified = modified_at(&file_path)?;
@@ -505,7 +531,7 @@ fn scan_directory(path: &Path) -> AppResult<FileNode> {
             if !node.children.is_empty() {
                 children.push(node);
             }
-        } else if is_markdown(&child_path) {
+        } else if is_supported_text_path(&child_path) {
             let child_metadata = fs::metadata(&child_path).map_err(to_error)?;
             children.push(FileNode {
                 path: normalize_path(&child_path),
@@ -546,27 +572,92 @@ fn should_skip(name: &str) -> bool {
     )
 }
 
-fn is_markdown(path: &Path) -> bool {
+fn is_markdown_path(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|value| value.to_str()).map(|value| value.to_lowercase()),
         Some(extension) if extension == "md" || extension == "markdown"
     )
 }
 
-fn decode_text(bytes: &[u8]) -> (String, String) {
+fn is_supported_text_path(path: &Path) -> bool {
+    if is_markdown_path(path) {
+        return true;
+    }
+
+    if let Some(file_name) = path.file_name().and_then(|value| value.to_str()) {
+        let lower_name = file_name.to_lowercase();
+        if TEXT_FILE_EXTENSIONS.contains(&lower_name.as_str()) {
+            return true;
+        }
+        if let Some(dotless_name) = lower_name.strip_prefix('.') {
+            if TEXT_FILE_EXTENSIONS.contains(&dotless_name) {
+                return true;
+            }
+        }
+    }
+
+    match path.extension().and_then(|value| value.to_str()) {
+        Some(extension) if TEXT_FILE_EXTENSIONS.contains(&extension.to_lowercase().as_str()) => true,
+        Some(_) => is_probably_text_file(path),
+        None => path.exists() && is_probably_text_file(path),
+    }
+}
+
+fn is_probably_text_file(path: &Path) -> bool {
+    let Ok(mut file) = fs::File::open(path) else {
+        return false;
+    };
+    let mut buffer = [0_u8; 8192];
+    let Ok(read) = file.read(&mut buffer) else {
+        return false;
+    };
+    !is_probably_binary_bytes(&buffer[..read])
+}
+
+fn is_probably_binary_bytes(bytes: &[u8]) -> bool {
+    if bytes.is_empty() {
+        return false;
+    }
+
+    let sample = &bytes[..bytes.len().min(8192)];
+    if sample.iter().any(|byte| *byte == 0) {
+        return true;
+    }
+
+    let control_count = sample
+        .iter()
+        .filter(|byte| matches!(**byte, 0x01..=0x08 | 0x0B | 0x0C | 0x0E..=0x1F))
+        .count();
+
+    control_count * 100 / sample.len() > 5
+}
+
+fn decode_text(bytes: &[u8]) -> AppResult<(String, String)> {
     if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
         if let Ok(content) = String::from_utf8(bytes[3..].to_vec()) {
-            return (content, "UTF-8 BOM".into());
+            return Ok((content, "UTF-8 BOM".into()));
         }
     }
 
     if let Ok(content) = String::from_utf8(bytes.to_vec()) {
-        return (content, "UTF-8".into());
+        return Ok((content, "UTF-8".into()));
     }
 
     let (content, _, had_errors) = GBK.decode(bytes);
+    if had_errors && is_mostly_replacement_chars(&content) {
+        return Err("This file could not be decoded as UTF-8 or GBK text.".into());
+    }
     let encoding = if had_errors { "GBK/ANSI fallback" } else { "GBK" };
-    (content.into_owned(), encoding.into())
+    Ok((content.into_owned(), encoding.into()))
+}
+
+fn is_mostly_replacement_chars(content: &str) -> bool {
+    let total = content.chars().count();
+    if total == 0 {
+        return false;
+    }
+    let replacements = content.chars().filter(|char| *char == '\u{FFFD}').count();
+    replacements * 100 / total > 10
 }
 
 fn modified_at(path: &Path) -> AppResult<u64> {
@@ -607,4 +698,38 @@ fn normalize_path(path: &Path) -> String {
 
 fn to_error<E: std::fmt::Display>(error: E) -> String {
     error.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn supported_text_extensions_are_allowed() {
+        for path in [
+            "notes.txt",
+            "settings.json",
+            "app.config",
+            "server.conf",
+            "Cargo.toml",
+            ".env",
+            ".gitignore",
+            "README.md",
+        ] {
+            assert!(is_supported_text_path(Path::new(path)), "{path}");
+        }
+    }
+
+    #[test]
+    fn binary_bytes_are_rejected() {
+        assert!(is_probably_binary_bytes(&[0, 1, 2, 3, 4]));
+        assert!(!is_probably_binary_bytes(b"plain text\nwith lines\n"));
+    }
+
+    #[test]
+    fn utf8_bom_is_decoded_as_text() {
+        let (content, encoding) = decode_text(&[0xEF, 0xBB, 0xBF, b'a', b'b']).unwrap();
+        assert_eq!(content, "ab");
+        assert_eq!(encoding, "UTF-8 BOM");
+    }
 }

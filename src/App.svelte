@@ -62,7 +62,6 @@
   const RIGHT_SIDEBAR_COLLAPSED_KEY = 'md-view-right-sidebar-collapsed';
   const AUTO_SAVE_ENABLED_KEY = 'md-view-auto-save-enabled';
   const ASK_BEFORE_LEAVE_SAVE_KEY = 'md-view-ask-before-leave-save';
-
   $: t = text[language];
   $: rootNodes = tree ? tree.children : [];
   $: fileName = selectedPath ? selectedPath.split(/[\\/]/).pop() ?? selectedPath : '';
@@ -439,12 +438,8 @@
     }
   }
 
-  function isMarkdownPath(path: string) {
-    return /\.(md|markdown)$/i.test(path);
-  }
-
   async function openDroppedPath(paths: string[]) {
-    const path = paths.find(isMarkdownPath) ?? paths[0];
+    const path = paths[0];
     if (!path) return;
     await loadPath(path);
   }
@@ -551,7 +546,7 @@
       });
 
     void initialOpenPaths().then((paths) => {
-      const path = paths.find(isMarkdownPath) ?? paths[0];
+      const path = paths[0];
       if (path) {
         void loadPath(path);
       }

@@ -130,7 +130,7 @@ export type VisualText = AppText['visual'];
 export const text: Record<Language, AppText> = {
   zh: {
     languageName: '中文',
-    dropText: '松开以打开 Markdown 文件',
+    dropText: '松开以打开文本文件',
     actions: {
       openFolder: '打开目录',
       refresh: '刷新',
@@ -157,7 +157,7 @@ export const text: Record<Language, AppText> = {
       outline: '大纲',
       noFolder: '未打开目录',
       emptyTitle: '无标题',
-      emptyState: '打开目录或拖入 Markdown 文件。',
+      emptyState: '打开目录、打开文件或拖入文本文件。',
       expandFolder: '展开目录',
       collapseFolder: '收起目录',
       expandOutline: '展开大纲',
@@ -266,7 +266,7 @@ export const text: Record<Language, AppText> = {
   },
   en: {
     languageName: 'English',
-    dropText: 'Release to open Markdown',
+    dropText: 'Release to open text file',
     actions: {
       openFolder: 'Open',
       refresh: 'Refresh',
@@ -293,7 +293,7 @@ export const text: Record<Language, AppText> = {
       outline: 'Outline',
       noFolder: 'No folder opened',
       emptyTitle: 'No headings',
-      emptyState: 'Open a folder or drop a Markdown file.',
+      emptyState: 'Open a folder, open a file, or drop a text file.',
       expandFolder: 'Expand files',
       collapseFolder: 'Collapse files',
       expandOutline: 'Expand outline',
