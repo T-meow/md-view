@@ -1,0 +1,32 @@
+[package]
+name = "md-view"
+version = "0.1.0"
+description = "Lightweight local Markdown reader and editor"
+authors = ["Ferris"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "md_view_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "md-view"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+encoding_rs = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2"
+
+[profile.release]
+strip = "symbols"
+lto = true
+codegen-units = 1
+panic = "abort"
+opt-level = "z"

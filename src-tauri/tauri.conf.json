@@ -1,0 +1,62 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "md-view",
+  "version": "0.1.0",
+  "identifier": "local.markdown.reader.editor",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist",
+    "removeUnusedCommands": true
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "md-view",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 900,
+        "minHeight": 560,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' ipc: http://ipc.localhost http://127.0.0.1:1420; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src ipc: http://ipc.localhost http://127.0.0.1:1420 ws://127.0.0.1:1420; object-src 'none'; base-uri 'self'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "**/*.png",
+          "**/*.PNG",
+          "**/*.jpg",
+          "**/*.JPG",
+          "**/*.jpeg",
+          "**/*.JPEG",
+          "**/*.webp",
+          "**/*.WEBP",
+          "**/*.gif",
+          "**/*.GIF",
+          "**/*.bmp",
+          "**/*.BMP"
+        ]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Productivity",
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown"],
+        "name": "Markdown Document",
+        "description": "Markdown document",
+        "mimeType": "text/markdown",
+        "role": "Editor"
+      }
+    ],
+    "shortDescription": "Local Markdown reader and editor",
+    "longDescription": "md-view is a lightweight local Markdown reader and editor with directory browsing, source editing, preview, drafts, and save conflict detection."
+  }
+}
