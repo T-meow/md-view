@@ -83,11 +83,22 @@ jobs:
         with:
           args: ${{ matrix.args }}
 
+      - name: Prepare portable Windows exe
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          New-Item -ItemType Directory -Force -Path release-portable | Out-Null
+          Copy-Item `
+            -LiteralPath src-tauri/target/release/md-view.exe `
+            -Destination "release-portable/md-view-portable-$version-windows-x64.exe"
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: md-view-${{ matrix.platform }}
           path: |
+            release-portable/*.exe
             src-tauri/target/release/bundle/**/*.AppImage
             src-tauri/target/release/bundle/**/*.deb
             src-tauri/target/release/bundle/**/*.rpm
