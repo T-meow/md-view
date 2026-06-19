@@ -6,7 +6,7 @@ md-view 是一个本地 Markdown 阅读和编辑器，使用 Tauri 2 + Svelte + 
 
 ## 项目特点
 
-- 轻量化：Windows 安装包约 1.3 MB，Windows exe 约 2.9 MB，内存占用低于 5 MB。
+- 轻量化：Windows 安装包约 1.3 MB，Windows exe 约 2.9 MB。
 - 软件体积小：适合直接下载、打包、复制和本地使用。
 - 大纲目录：自动提取标题，支持快速跳转。
 - 多种视图：支持阅读、源码编辑、可视化编辑和分屏预览。

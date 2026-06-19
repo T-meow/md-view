@@ -6,7 +6,7 @@ md-view is a local Markdown reader and editor built with Tauri 2, Svelte, and Vi
 
 ## Highlights
 
-- Lightweight: the Windows installer is about 1.3 MB, the Windows exe is about 2.9 MB, and memory usage is below 5 MB.
+- Lightweight: the Windows installer is about 1.3 MB, and the Windows exe is about 2.9 MB.
 - Small app size: easy to download, package, copy, and run locally.
 - Outline panel: extracts headings automatically and supports quick navigation.
 - Multiple views: read mode, source editing, visual editing, and split preview.
