@@ -566,7 +566,7 @@
     <div class="toolbar-group">
       <button class="primary" disabled={busy} on:click={chooseWorkspace}>{t.actions.openFolder}</button>
       <button disabled={!workspacePath || busy} on:click={refreshWorkspace}>{t.actions.refresh}</button>
-      <button class:dirty disabled={!dirty || busy} on:click={() => saveCurrent()}>{t.actions.save}</button>
+      <button class:dirty disabled={!selectedPath || !dirty || busy} on:click={() => saveCurrent()}>{t.actions.save}</button>
       <button
         class="default-app-button"
         disabled={busy || defaultSettingsBusy}
@@ -664,7 +664,13 @@
           <p>{t.panels.emptyState}</p>
         </div>
       {:else if mode === 'read'}
-        <MarkdownPreview bind:this={previewRef} {content} {outline} />
+        <MarkdownPreview
+          bind:this={previewRef}
+          {content}
+          {outline}
+          filePath={selectedPath}
+          on:openLocalFile={(event) => selectFile(event.detail)}
+        />
       {:else if mode === 'edit'}
         <MarkdownEditor bind:this={editorRef} value={content} on:change={(event) => setContent(event.detail)} />
       {:else if mode === 'visual'}
@@ -672,13 +678,20 @@
           bind:this={visualRef}
           value={content}
           {outline}
+          filePath={selectedPath}
           strings={t.visual}
           on:change={(event) => setContent(event.detail)}
         />
       {:else}
         <div class="split-view">
           <MarkdownEditor bind:this={editorRef} value={content} on:change={(event) => setContent(event.detail)} />
-          <MarkdownPreview bind:this={previewRef} {content} {outline} />
+          <MarkdownPreview
+            bind:this={previewRef}
+            {content}
+            {outline}
+            filePath={selectedPath}
+            on:openLocalFile={(event) => selectFile(event.detail)}
+          />
         </div>
       {/if}
     </section>

@@ -2,16 +2,19 @@
   import { createEventDispatcher, onMount, tick } from 'svelte';
   import DOMPurify from 'dompurify';
   import { marked } from 'marked';
+  import { toImageAssetSrc } from '../fileAssets';
   import { text, type VisualText } from '../i18n';
   import type { Heading } from '../types';
 
   export let value = '';
   export let outline: Heading[] = [];
   export let strings: VisualText = text.zh.visual;
+  export let filePath = '';
 
   const dispatch = createEventDispatcher<{ change: string }>();
   let host: HTMLElement;
   let lastRendered = '';
+  let lastRenderedPath = '';
   let lastEmitted = '';
   let renderId = 0;
   let savedRange: Range | null = null;
@@ -27,7 +30,7 @@
     renderEditor(value);
   });
 
-  $: if (host && value !== lastRendered && value !== lastEmitted) {
+  $: if (host && ((value !== lastRendered && value !== lastEmitted) || filePath !== lastRenderedPath)) {
     renderEditor(value);
   }
 
@@ -41,6 +44,7 @@
     const html = buildVisualHtml(source);
     host.innerHTML = html || '<p><br></p>';
     lastRendered = source;
+    lastRenderedPath = filePath;
     lastEmitted = source;
     annotateHeadings();
   }
@@ -58,12 +62,28 @@
 
     try {
       const html = marked.parse(token.raw ?? '', { async: false }) as string;
-      return DOMPurify.sanitize(html, {
-        ADD_ATTR: ['class', 'target', 'rel', 'src', 'alt', 'href']
+      return DOMPurify.sanitize(resolveImageSources(html), {
+        ADD_ATTR: ['class', 'target', 'rel', 'src', 'alt', 'href', 'data-original-src'],
+        ADD_URI_SAFE_ATTR: ['src'],
+        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data|blob|asset):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i
       });
     } catch {
       return unsupportedBlock(token.raw ?? token.text ?? '', index);
     }
+  }
+
+  function resolveImageSources(html: string) {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    const images = template.content.querySelectorAll('img');
+    images.forEach((node) => {
+      const source = node.getAttribute('src');
+      const nextSource = toImageAssetSrc(source, filePath);
+      if (!nextSource || nextSource === source) return;
+      node.setAttribute('data-original-src', source ?? '');
+      node.setAttribute('src', nextSource);
+    });
+    return template.innerHTML;
   }
 
   function isUnsupportedToken(token: any) {
@@ -213,7 +233,7 @@
     }
     if (tag === 'img') {
       const alt = node.getAttribute('alt') ?? '';
-      const src = node.getAttribute('src') ?? '';
+      const src = node.dataset.originalSrc || node.getAttribute('src') || '';
       return src ? `![${alt}](${src})` : '';
     }
     if (tag === 'ul' || tag === 'ol' || tag === 'table' || tag === 'pre' || tag === 'blockquote') {
