@@ -77,42 +77,22 @@ struct DraftSummary {
 
 type AppResult<T> = Result<T, String>;
 
-const TEXT_FILE_EXTENSIONS: &[&str] = &[
-    "md",
-    "markdown",
-    "txt",
-    "text",
-    "log",
-    "json",
-    "jsonc",
-    "config",
-    "conf",
-    "cfg",
-    "ini",
-    "toml",
-    "yaml",
-    "yml",
-    "xml",
-    "csv",
-    "env",
-    "gitignore",
-    "ignore",
-];
-
 #[tauri::command]
-fn open_workspace(path: String) -> AppResult<FileNode> {
+fn open_workspace(app: AppHandle, path: String) -> AppResult<FileNode> {
     let root = PathBuf::from(path);
     if !root.is_dir() {
         return Err("请选择有效目录".into());
     }
+    allow_asset_directory(&app, &root)?;
     scan_directory(&root)
 }
 
 #[tauri::command]
-fn open_path(path: String) -> AppResult<OpenPathResult> {
+fn open_path(app: AppHandle, path: String) -> AppResult<OpenPathResult> {
     let source_path = PathBuf::from(path);
 
     if source_path.is_dir() {
+        allow_asset_directory(&app, &source_path)?;
         let tree = scan_directory(&source_path)?;
         return Ok(OpenPathResult {
             kind: "workspace".into(),
@@ -132,6 +112,7 @@ fn open_path(path: String) -> AppResult<OpenPathResult> {
             .parent()
             .map(Path::to_path_buf)
             .unwrap_or_else(|| PathBuf::from("."));
+        allow_asset_directory(&app, &workspace_path)?;
         let tree = scan_directory(&workspace_path)?;
         let file = read_file_path(&source_path)?;
 
@@ -531,7 +512,7 @@ fn scan_directory(path: &Path) -> AppResult<FileNode> {
             if !node.children.is_empty() {
                 children.push(node);
             }
-        } else if is_supported_text_path(&child_path) {
+        } else if is_browsable_text_path(&child_path) {
             let child_metadata = fs::metadata(&child_path).map_err(to_error)?;
             children.push(FileNode {
                 path: normalize_path(&child_path),
@@ -579,25 +560,23 @@ fn is_markdown_path(path: &Path) -> bool {
     )
 }
 
-fn is_supported_text_path(path: &Path) -> bool {
+fn is_browsable_text_path(path: &Path) -> bool {
     if is_markdown_path(path) {
         return true;
     }
 
-    if let Some(file_name) = path.file_name().and_then(|value| value.to_str()) {
-        let lower_name = file_name.to_lowercase();
-        if TEXT_FILE_EXTENSIONS.contains(&lower_name.as_str()) {
-            return true;
-        }
-        if let Some(dotless_name) = lower_name.strip_prefix('.') {
-            if TEXT_FILE_EXTENSIONS.contains(&dotless_name) {
-                return true;
-            }
-        }
+    matches!(
+        path.extension().and_then(|value| value.to_str()).map(|value| value.to_lowercase()),
+        Some(extension) if extension == "txt"
+    )
+}
+
+fn is_supported_text_path(path: &Path) -> bool {
+    if is_browsable_text_path(path) {
+        return true;
     }
 
     match path.extension().and_then(|value| value.to_str()) {
-        Some(extension) if TEXT_FILE_EXTENSIONS.contains(&extension.to_lowercase().as_str()) => true,
         Some(_) => is_probably_text_file(path),
         None => path.exists() && is_probably_text_file(path),
     }
@@ -660,6 +639,12 @@ fn is_mostly_replacement_chars(content: &str) -> bool {
     replacements * 100 / total > 10
 }
 
+fn allow_asset_directory(app: &AppHandle, path: &Path) -> AppResult<()> {
+    app.asset_protocol_scope()
+        .allow_directory(path, true)
+        .map_err(to_error)
+}
+
 fn modified_at(path: &Path) -> AppResult<u64> {
     let metadata = fs::metadata(path).map_err(to_error)?;
     Ok(system_time_to_ms(metadata.modified().ok()))
@@ -706,17 +691,22 @@ mod tests {
 
     #[test]
     fn supported_text_extensions_are_allowed() {
-        for path in [
-            "notes.txt",
-            "settings.json",
-            "app.config",
-            "server.conf",
-            "Cargo.toml",
-            ".env",
-            ".gitignore",
-            "README.md",
-        ] {
+        for path in ["notes.txt", "README.md", "guide.markdown"] {
             assert!(is_supported_text_path(Path::new(path)), "{path}");
+        }
+    }
+
+    #[test]
+    fn browsable_text_extensions_are_explicitly_allowed() {
+        for path in ["README.md", "guide.markdown", "notes.txt"] {
+            assert!(is_browsable_text_path(Path::new(path)), "{path}");
+        }
+    }
+
+    #[test]
+    fn unknown_extensions_are_not_browsable_text() {
+        for path in ["App.svelte", "script.ts", "settings.json", "Cargo.toml", ".env", ".gitignore", "preview.png"] {
+            assert!(!is_browsable_text_path(Path::new(path)), "{path}");
         }
     }
 

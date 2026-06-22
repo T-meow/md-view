@@ -13,7 +13,7 @@ md-view 是一个本地 Markdown 阅读和编辑器，使用 Tauri 2 + Svelte + 
 - 外观美化：内置多套主题，支持给阅读区设置背景图。
 - 本地优先：打开本地 `.md` / `.markdown` 文件或目录，不依赖云服务。
 
-![md-view preview](assets/preview.png)
+![md-view preview](./assets/preview.png)
 
 ## 功能
 
