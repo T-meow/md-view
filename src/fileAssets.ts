@@ -30,12 +30,12 @@ export function resolveLocalPath(source: string | null | undefined, markdownPath
   }
 
   const cleanSource = stripHashAndQuery(rawSource);
-  const withoutFileScheme = FILE_SCHEME_PATTERN.test(cleanSource) ? fileUrlToPath(cleanSource) : cleanSource;
+  const withoutFileScheme = FILE_SCHEME_PATTERN.test(cleanSource) ? fileUrlToPath(cleanSource) : decodeLocalPath(cleanSource);
   return isAbsolutePath(withoutFileScheme) ? withoutFileScheme : resolveSiblingPath(markdownPath, withoutFileScheme);
 }
 
 export function isLocalMarkdownPath(path: string) {
-  return /\.(?:md|markdown)$/i.test(stripHashAndQuery(path));
+  return /\.(?:md|markdown)$/i.test(decodeLocalPath(stripHashAndQuery(path)));
 }
 
 function resolveSiblingPath(baseFilePath: string, relativePath: string) {
@@ -74,6 +74,14 @@ function fileUrlToPath(source: string) {
     return decoded.replace(/^\/([a-zA-Z]:\/)/, '$1');
   } catch {
     return source.replace(FILE_SCHEME_PATTERN, '');
+  }
+}
+
+function decodeLocalPath(source: string) {
+  try {
+    return decodeURIComponent(source);
+  } catch {
+    return source;
   }
 }
 
