@@ -1,177 +1,120 @@
 # md-view
 
-[中文](README.md)
+[简体中文](README.md)
 
-md-view is a local Markdown reader and editor built with Tauri 2, Svelte, and Vite. It is designed for users who want a lightweight local Markdown tool that can be downloaded, modified, and rebuilt easily.
+A lightweight Markdown reader and editor that keeps your files on your device. Open a README or a folder of documents, and switch between reading, source editing, visual editing and split preview.
 
-[Product website](https://t-meow.github.io/md-view/) · [Online demo](https://t-meow.github.io/md-view/play/) · [Public downloads](https://github.com/T-meow/md-view/releases/latest)
+[Download v1.2.0](https://github.com/T-meow/md-view/releases/tag/v1.2.0) · [Website](https://t-meow.github.io/md-view/en/) · [Online demo](https://t-meow.github.io/md-view/play/) · [Changelog](CHANGELOG.md)
 
-## Development version
+## Download and get started
 
-This branch contains an unreleased desktop refactor. Public downloads follow their Release notes.
+Choose your system and edition from [GitHub Releases](https://github.com/T-meow/md-view/releases/latest):
 
-- Opening a file reads only that document. Folder browsing loads direct children on demand and renders only visible rows.
-- Tabs keep independent content, source undo history, view modes and reading positions. `Ctrl+P` searches open, recent and loaded files before an explicit workspace indexing action.
-- Shared Lite/Plus file management: create files and folders, Save As, rename, move, trash, copy paths and reveal files.
-- Manual saves and automatic drafts are the default. Optional write-back is off. Snapshot saves check disk conflicts, replace files atomically and preserve supported encoding, BOM and line endings.
-- Ignore rules include `.gitignore`, `.ignore` and custom exclusions. Links and junctions are not traversed. Scans stop at 100,000 entries or 30 seconds; files over 2 MiB open in source mode.
+| System | Download | How to run |
+| --- | --- | --- |
+| Windows x64 | `md-view-lite_1.2.0_windows-x64-portable.exe` or `md-view-plus_1.2.0_windows-x64-portable.exe` | Run the downloaded executable; the system needs the WebView2 runtime |
+| macOS Apple Silicon | A `.dmg` starting with `md-view-lite_1.2.0_` or `md-view-plus_1.2.0_` | Open the disk image and drag the app into Applications |
 
-Shortcuts: `Ctrl+N`, `Ctrl+O`, `Ctrl+P`, `Ctrl+S`, `Ctrl+Shift+S`, `Ctrl+W`, `Ctrl+Tab` / `Ctrl+Shift+Tab`. The corresponding Command combinations work on macOS.
+These are the platforms with published binaries. Linux and Intel Mac binaries are not included. The macOS app is unsigned and not notarized, so the system may block the first launch.
 
-See the [development record](docs/load-performance-plan.md) for architecture, interfaces and validation.
+Create a document, open one or more files, open a folder, or drag files into the app. Local Markdown links open the target document in an app tab; website links open in your system browser. Press `Ctrl+S` to save. Closing an unsaved document prompts you to handle the changes.
 
-## Highlights
+## What's new in 1.2.0
 
-- Lightweight: uses the system WebView; Lite keeps essential rendering. Download sizes depend on the release.
-- Small app size: easy to download, package, copy, and run locally.
-- Outline panel: extracts headings automatically and supports quick navigation.
-- Multiple views: read mode, source editing, visual editing, and split preview.
-- Appearance options: built-in themes and custom reader background images.
-- Local-first: opens local `.md` / `.markdown` files or folders without a cloud service.
+- **File workflow**: tabs, new documents, drag and drop, close, rename, move, trash and reveal in the system file manager. Tabs retain document content, source undo history, view mode and reading position.
+- **Adaptive sidebars**: panels shrink with the window, and the outline temporarily hides when space runs out. Enlarging the window restores your saved layout.
+- **Consistent code tools**: copy and wrap controls in Lite, Plus and the online demo, including code blocks without a language. Copying preserves indentation and newlines, confirms success only after the clipboard write, and allows retries after failure.
+- **Local navigation**: fixes local document links opening a browser; supports relative paths, Unicode, spaces and headings in other files.
+- **Editing and reading fixes**: improved preservation of code, lists, tables and reference links during visual editing; refreshed reading positions and cleaner printing.
+- **About and dependency updates**: version, author, website, repository and license in settings, plus dependency security updates.
 
-![md-view preview](assets/preview.png)
+See the [changelog](CHANGELOG.md) and [manual acceptance examples](docs/ui-update-checklist.md) for details.
 
-## Features
+## Lite and Plus
 
-- Open local Markdown files or folders
-- Browse files with a file tree
-- Source editing, reading preview, visual editing, and split preview
-- Jump through the heading outline
-- Draft saving
-- Save conflict detection
-- Support for `.md` and `.markdown`
-- Theme switching and reader background images
-- Windows default-app settings entry
+Both editions share the desktop interface, file management and saving behavior. Choose the rendering features you need.
 
-## Edition Development Strategy
+| Feature | Lite | Plus |
+| --- | --- | --- |
+| Local folders, tabs, new files and drag and drop | ✓ | ✓ |
+| Reading, source, visual editing and split view | ✓ | ✓ |
+| Adaptive sidebars, outline and local document links | ✓ | ✓ |
+| Tables, task lists, code copying and wrapping | ✓ | ✓ |
+| Themes, backgrounds, Chinese / English, drafts and save-conflict prompts | ✓ | ✓ |
+| Quick open for open, recent and loaded files | ✓ | ✓ |
+| Math, Mermaid, Frontmatter, footnotes and advanced syntax | — | ✓ |
+| Workspace heading index, local link checks and HTML export | — | ✓ |
 
-md-view is maintained as two editions: Lite and Plus.
+![md-view interface preview](assets/preview.png)
 
-- `main` maintains the shared desktop UI and file capabilities. Plus is the advanced rendering baseline.
-- Lite and Plus share sessions, file management, drafts, folder browsing and filename search. Workspace heading search, advanced rendering, HTML export and advanced reading settings belong to Plus.
-- Default development and packaging commands target Plus. Use explicit `:*:lite` commands when working on Lite.
+## Local files and saving
 
-## Local Development
+- Opening a single file reads only that document. Folders load one level at a time, and the tree renders visible rows. Workspace indexing starts on demand.
+- Drafts and saved files are separate. **Automatic disk writeback is off by default.** Saving checks whether the file changed on disk to avoid silently overwriting external edits.
+- Saving preserves existing UTF-8, GBK or UTF-16 encoding, BOM and line endings. Documents larger than 2 MiB open in source mode by default.
+- File scanning respects `.gitignore`, `.ignore` and custom exclusions, and does not traverse symbolic links or junctions by default.
+- Visual editing preserves original Markdown for untouched blocks where possible. Use source mode for complex syntax; visual editing undo history is not persisted across tabs.
 
-Install these first:
+The online demo processes imported text in your browser and provides source editing, previews and download exports. Use the desktop app for direct file access, folder management and drafts. Remote images in documents are still loaded from their original URLs.
 
-- Node.js 24 LTS (used by CI)
-- Rust stable, at least 1.88 to match the locked dependencies
-- The Tauri desktop dependencies required by your operating system
+## Keyboard shortcuts
 
-Run:
+| Action | Windows / Linux |
+| --- | --- |
+| New document | `Ctrl+N` |
+| Open files | `Ctrl+O` |
+| Quick open | `Ctrl+P` |
+| Save / Save as | `Ctrl+S` / `Ctrl+Shift+S` |
+| Close current tab | `Ctrl+W` |
+| Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
+
+On macOS, use the corresponding `Command` shortcuts for new, open, quick open, save and close.
+
+## Development and builds
+
+Built with Tauri 2, Svelte and Vite. Development requires Node.js 24, stable Rust (at least 1.88) and the Tauri desktop dependencies for your operating system.
 
 ```bash
-npm ci --registry=https://registry.npmmirror.com/
-npm run tauri:dev
+npm ci
+npm run tauri:dev          # Plus
+npm run tauri:dev:lite     # Lite
 ```
 
-By default, `npm run tauri:dev` starts Plus. For Lite development, run:
+Common build commands:
 
 ```bash
-npm run tauri:dev:lite
-```
+# Windows portable app; replace plus with lite for Lite
+npm run tauri:build:plus -- --no-bundle
 
-## Local Packaging
-
-```bash
-npm install
-npm run tauri:build
-```
-
-By default, `npm run tauri:build` packages Plus. Common edition commands:
-
-```bash
+# Windows NSIS installer (the default bundle target)
 npm run tauri:build:plus
-npm run tauri:build:lite
-npm run tauri:build:both
-```
 
-Build artifacts are written to:
+# macOS DMG (run on macOS)
+npm run tauri:build:plus -- --bundles dmg
 
-```text
-src-tauri/target/release/bundle/
-```
-
-The edition build scripts also copy normalized installers and portable executables to the root `release/` directory for local distribution and CI uploads.
-
-The current configuration builds the package types supported by the current system:
-
-- Windows: NSIS installer
-- macOS: DMG
-- Linux: AppImage, DEB, RPM
-
-These are build targets, not a promise of public binaries for every platform. Public `v1.0.1` offers Windows x64 portable apps and macOS Apple Silicon DMGs.
-
-On Windows, the default local build uses NSIS to avoid downloading WiX for the `all` target. To try every bundle target supported by the current system, run:
-
-```bash
-npm run tauri:build:all
-```
-
-## Website and online demo
-
-`site/` contains the independent Chinese and English product pages. The homepage does not import editor dependencies; the Svelte demo lives at `/md-view/play/`.
-
-```bash
+# Website and online demo
 npm run build:web
 npm run check:web
 ```
 
-Desktop frontend output is `dist/`. The demo builds to `dist-play/`; the combined Pages artifact is `dist-site/`. `VITE_BASE_PATH` overrides the default `/md-view/` prefix. Product copy describes publicly released features only.
+Desktop output goes to `src-tauri/target/release/`, with consistently named distribution files copied to `release/`. The website and demo are built into `dist-site/`. Their default base path is `/md-view/`, configurable through `VITE_BASE_PATH`.
 
-## Development checks
+Checks before committing:
 
 ```bash
 npm run check
 npm test
 npm run check:editions
-npm run build:lite
-npm run build:plus
 cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
-cargo check --manifest-path src-tauri/Cargo.toml --locked
+git diff --check
 ```
 
-## Linux Dependencies
+GitHub Actions checks and builds both editions for Windows and macOS on branch updates. Pushing a `v*` tag creates a draft release with binaries for review before publication. Updates to `main` deploy the Chinese and English website and the online demo to GitHub Pages.
 
-Ubuntu/Debian usually needs:
+See the [development notes](docs/load-performance-plan.md) for the architecture and file-loading design.
 
-```bash
-sudo apt-get update
-sudo apt-get install -y build-essential curl wget file libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf rpm
-```
+## Feedback and license
 
-For other distributions, install the corresponding Tauri 2 Linux dependencies.
+Report problems through [GitHub Issues](https://github.com/T-meow/md-view/issues), including your system, version, reproduction steps and a minimal document with private information removed. This project does not accept PRs. You are welcome to fork, modify, build and distribute it for your needs.
 
-## macOS Note
-
-This project does not perform Apple signing or notarization by default. If you package and share it directly, macOS may block the unsigned app with Gatekeeper. Add a developer certificate, signing, and notarization before formal public distribution.
-
-## GitHub Actions
-
-`.github/workflows/pages.yml` checks the site and demo on PRs to `main`. It deploys Pages only on `main` updates or manual runs against `main`.
-
-The desktop workflow `.github/workflows/build.yml`:
-
-- Builds Windows and macOS on pushes to `plus` / `main` / `master`
-- Runs build checks for pull requests to `plus` / `main` / `master`
-- Covers both Lite and Plus in the build matrix, with edition and version included in uploaded artifact names
-- Supports manual workflow runs
-- Creates a draft Release and uploads build artifacts when a `v*` tag is pushed
-
-Example:
-
-```bash
-git tag v0.2.4
-git push origin v0.2.4
-```
-
-## Contributions
-
-Pull requests are not accepted. Fork this repository and use an AI coding agent or local editor to make, package, and distribute your own changes.
-
-## License and Disclaimer
-
-This project uses WTFPL v2. In short: do what you want with it.
-
-Disclaimer: this project is provided as is, without any express or implied warranty. The author does not guarantee that it is suitable for any particular purpose and is not responsible for any issues, losses, or liability caused by using, modifying, packaging, distributing, or running this project. Use it at your own risk.
+By [T-meow](https://github.com/T-meow), under [WTFPL v2](LICENSE). Provided as is, without express or implied warranties. You assume the risks of using, modifying and distributing it.

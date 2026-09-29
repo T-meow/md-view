@@ -1,16 +1,17 @@
-import { mkdir, writeFile, copyFile } from 'node:fs/promises';
+import { mkdir, writeFile, copyFile, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { content } from '../site/content.mjs';
 import { renderPage } from '../site/template.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
+const { plus: version } = JSON.parse(await readFile(resolve(root, 'editionVersions.json'), 'utf8'));
 const output = resolve(root, 'dist-site');
 const base = `/${(process.env.VITE_BASE_PATH || '/md-view/').replace(/^\/+|\/+$/g, '')}/`.replace('//', '/');
 await mkdir(resolve(output, 'en'), { recursive: true });
 for (const locale of ['zh', 'en'])
   await writeFile(
     resolve(output, locale === 'zh' ? 'index.html' : 'en/index.html'),
-    renderPage(content[locale], locale, base),
+    renderPage(content[locale], locale, base, version),
     'utf8'
   );
 for (const file of ['styles.css', 'site.js', 'favicon.svg'])

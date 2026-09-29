@@ -33,6 +33,7 @@ export type AppText = {
     collapseFolder: string;
     expandOutline: string;
     collapseOutline: string;
+    outlineAutoClosed: string;
     linePrefix: string;
     lineSuffix: string;
   };
@@ -113,6 +114,26 @@ export type AppText = {
     light: string;
   };
   themeNames: Record<string, string>;
+  about: {
+    title: string;
+    version: string;
+    author: string;
+    website: string;
+    repository: string;
+    license: string;
+  };
+  preview: { linkCheckFailed: string };
+  code: {
+    plainText: string;
+    copy: string;
+    copySource: string;
+    wrap: string;
+    copying: string;
+    copied: string;
+    copyFailed: string;
+    copyFailedHint: string;
+    copyUnavailable: string;
+  };
   visual: {
     toolbar: string;
     paragraphStyle: string;
@@ -177,6 +198,7 @@ export const text: Record<Language, AppText> = {
       collapseFolder: '收起目录',
       expandOutline: '展开大纲',
       collapseOutline: '收起大纲',
+      outlineAutoClosed: '窗口较窄，大纲已临时收起；扩大窗口或收起文件栏即可恢复',
       linePrefix: '第',
       lineSuffix: '行'
     },
@@ -258,6 +280,26 @@ export const text: Record<Language, AppText> = {
       dark: '深色',
       light: '亮色'
     },
+    about: {
+      title: '关于',
+      version: '版本',
+      author: '作者',
+      website: '项目官网',
+      repository: '源代码仓库',
+      license: '许可证'
+    },
+    preview: { linkCheckFailed: '本地链接检查失败，可重新打开文档重试' },
+    code: {
+      plainText: '文本',
+      copy: '复制',
+      copySource: '复制源码',
+      wrap: '换行',
+      copying: '复制中…',
+      copied: '已复制',
+      copyFailed: '复制失败，重试',
+      copyFailedHint: '无法写入剪贴板，请重试或手动选择内容复制',
+      copyUnavailable: '剪贴板不可用，请手动选择内容复制'
+    },
     themeNames: {
       'tea-light': '清茶 Light',
       'ink-light': '墨蓝 Light',
@@ -329,6 +371,7 @@ export const text: Record<Language, AppText> = {
       collapseFolder: 'Collapse files',
       expandOutline: 'Expand outline',
       collapseOutline: 'Collapse outline',
+      outlineAutoClosed: 'Outline temporarily hidden. Widen the window or hide the file pane to restore it.',
       linePrefix: 'Line',
       lineSuffix: ''
     },
@@ -409,6 +452,26 @@ export const text: Record<Language, AppText> = {
       readingFocusTitle: 'Softly highlight the current paragraph and preserve adjacent context',
       dark: 'Dark',
       light: 'Light'
+    },
+    about: {
+      title: 'About',
+      version: 'Version',
+      author: 'Author',
+      website: 'Project website',
+      repository: 'Source repository',
+      license: 'License'
+    },
+    preview: { linkCheckFailed: 'Local link check failed. Reopen the document to retry.' },
+    code: {
+      plainText: 'Text',
+      copy: 'Copy',
+      copySource: 'Copy source',
+      wrap: 'Wrap',
+      copying: 'Copying…',
+      copied: 'Copied',
+      copyFailed: 'Copy failed, retry',
+      copyFailedHint: 'Could not write to the clipboard. Retry or select and copy the text manually.',
+      copyUnavailable: 'Clipboard unavailable. Select and copy the text manually.'
     },
     themeNames: {
       'tea-light': 'Tea Light',

@@ -119,11 +119,12 @@ describe('Mermaid rendering regression', () => {
     expect(Array.from(html.querySelectorAll('path')).map((path) => path.getAttribute('d'))).toEqual(paths);
     expect(html.querySelector('script, foreignObject, [onload], [onmouseover]')).toBeNull();
     expect(Array.from(html.querySelectorAll('a')).map((link) => link.getAttribute('href'))).toEqual([
-      'notes2.pdf',
+      '#',
       'https://example.com/notes2.pdf',
       null,
       null
     ]);
+    expect(html.querySelector('a')?.getAttribute('data-local-file')).toBe('/docs/notes2.pdf');
   });
 });
 

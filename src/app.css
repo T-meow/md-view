@@ -993,15 +993,17 @@ button:disabled {
   background: var(--markdown-pre-bg);
 }
 
-.markdown-preview pre[data-language] {
-  padding-top: 38px;
+.markdown-preview pre.markdown-code-block {
+  overflow: hidden;
+}
+
+.markdown-preview pre.markdown-code-block > code {
+  display: block;
+  overflow: auto;
+  max-width: 100%;
 }
 
 .markdown-code-toolbar {
-  position: absolute;
-  top: 7px;
-  right: 8px;
-  left: 8px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -1012,10 +1014,16 @@ button:disabled {
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
+  margin-bottom: 8px;
+  white-space: normal;
 }
 
 .markdown-code-toolbar span {
   margin-right: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .markdown-code-toolbar button,
@@ -1024,6 +1032,11 @@ button:disabled {
   padding: 0 8px;
   border-radius: 5px;
   font-size: 12px;
+  flex-shrink: 0;
+}
+
+.markdown-preview button.copy-failed {
+  color: var(--dirty-text);
 }
 
 .markdown-preview pre.code-wrap code {
@@ -1691,7 +1704,9 @@ button:disabled {
   .plus-settings-panel,
   .plus-settings-backdrop,
   .image-preview-dialog,
-  .image-preview-backdrop {
+  .image-preview-backdrop,
+  .markdown-code-toolbar,
+  .markdown-mermaid-toolbar {
     display: none !important;
   }
 
@@ -1699,6 +1714,13 @@ button:disabled {
     height: auto;
     overflow: visible;
     padding: 0;
+  }
+
+  .markdown-preview pre.markdown-code-block,
+  .markdown-preview pre.markdown-code-block > code {
+    overflow: visible;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
   .web-plus-shell,

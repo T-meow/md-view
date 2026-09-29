@@ -36,6 +36,7 @@
   import type { DirectoryEntry, Heading, ViewMode } from './types';
   import type { SearchItem } from './state/search';
   import { modalFocus } from './state/modal';
+  import { calculatePaneLayout, resizePane, type PaneSide } from './state/layout';
   import type { EditorState } from '@codemirror/state';
   import './desktop.css';
 
@@ -82,10 +83,18 @@
   let outlineKey = '';
   let outlineTimer: ReturnType<typeof setTimeout> | undefined;
   let pendingJump: { id: string; line?: number; anchor?: string } | null = null;
-  let drag: { side: 'left' | 'right'; start: number; width: number } | null = null;
+  let drag: { side: PaneSide; start: number; width: number } | null = null;
+  let workspaceWidth = window.innerWidth;
 
   $: active = $documents.tabs.find((doc) => doc.id === $documents.activeId);
   $: t = text[language];
+  $: paneLayout = calculatePaneLayout({
+    width: workspaceWidth,
+    leftWidth: $preferences.leftWidth,
+    rightWidth: $preferences.rightWidth,
+    leftVisible: !$preferences.leftClosed && !immersive && Boolean($workspace.root || !active),
+    rightVisible: !$preferences.rightClosed && !immersive && Boolean(active)
+  });
   $: currentKey = active ? `${active.id}:${active.version}` : '';
   $: if (currentKey !== renderedKey) {
     renderedKey = currentKey;
@@ -350,24 +359,29 @@
       desktop.scheduleDraft(active.id);
     }
   }
-  function resizeStart(event: PointerEvent, side: 'left' | 'right') {
+  function measureWorkspace(node: HTMLElement) {
+    if (node.clientWidth) workspaceWidth = node.clientWidth;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) workspaceWidth = entry.contentRect.width;
+    });
+    observer.observe(node);
+    return { destroy: () => observer.disconnect() };
+  }
+  function resizeStart(event: PointerEvent, side: PaneSide) {
     event.preventDefault();
     drag = {
       side,
       start: event.clientX,
-      width: side === 'left' ? $preferences.leftWidth : $preferences.rightWidth
+      width: side === 'left' ? paneLayout.leftWidth : paneLayout.rightWidth
     };
   }
   function resizeMove(event: PointerEvent) {
     if (!drag) return;
-    const width = Math.max(
-      180,
-      Math.min(
-        drag.side === 'left' ? 460 : 400,
-        drag.width + (event.clientX - drag.start) * (drag.side === 'left' ? 1 : -1)
-      )
-    );
-    preferences.update((p) => ({ ...p, [drag!.side === 'left' ? 'leftWidth' : 'rightWidth']: width }));
+    const width = drag.width + (event.clientX - drag.start) * (drag.side === 'left' ? 1 : -1);
+    const currentWidth = drag.side === 'left' ? paneLayout.leftWidth : paneLayout.rightWidth;
+    if (width === currentWidth) return;
+    const resized = resizePane(paneLayout, drag.side, width);
+    preferences.update((p) => ({ ...p, ...resized }));
   }
   function resizeEnd() {
     if (drag) {
@@ -375,13 +389,14 @@
       desktop.setPreferences($preferences);
     }
   }
-  function resizeKey(event: KeyboardEvent, side: 'left' | 'right') {
+  function resizeKey(event: KeyboardEvent, side: PaneSide) {
     if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
     event.preventDefault();
-    const field = side === 'left' ? 'leftWidth' : 'rightWidth';
+    const width = side === 'left' ? paneLayout.leftWidth : paneLayout.rightWidth;
+    const delta = (event.key === 'ArrowRight' ? 16 : -16) * (side === 'left' ? 1 : -1);
     desktop.setPreferences({
       ...$preferences,
-      [field]: Math.max(180, Math.min(400, $preferences[field] + (event.key === 'ArrowRight' ? 16 : -16)))
+      ...resizePane(paneLayout, side, width + delta)
     });
   }
 
@@ -449,6 +464,7 @@
   on:keydown={keydown}
   on:pointermove={resizeMove}
   on:pointerup={resizeEnd}
+  on:pointercancel={resizeEnd}
   on:click={() => (contextMenu = null)}
 />
 
@@ -456,7 +472,7 @@
   class="desktop-shell"
   class:immersive
   class:drop-active={dropActive}
-  style={`--nav-width:${$preferences.leftWidth}px;--outline-width:${$preferences.rightWidth}px`}
+  style={`--nav-width:${paneLayout.leftWidth}px;--outline-width:${paneLayout.rightWidth}px`}
 >
   <header class="desktop-toolbar">
     <div class="desktop-brand"><BookOpen size={21} /><strong>{editionDisplayName}</strong></div>
@@ -489,10 +505,16 @@
             : desktop.chooseWorkspace()}><PanelLeft size={17} /></button
       >
       <button
-        class:active={!$preferences.rightClosed}
-        title="大纲"
-        aria-label="切换大纲"
-        on:click={() => desktop.setPreferences({ ...$preferences, rightClosed: !$preferences.rightClosed })}
+        class:active={paneLayout.rightVisible}
+        class:auto-collapsed={paneLayout.outlineAutoClosed}
+        title={paneLayout.outlineAutoClosed ? t.panels.outlineAutoClosed : t.panels.outline}
+        aria-label={paneLayout.outlineAutoClosed ? t.panels.outlineAutoClosed : t.panels.outline}
+        aria-pressed={paneLayout.rightVisible}
+        aria-disabled={paneLayout.outlineAutoClosed}
+        on:click={() =>
+          paneLayout.outlineAutoClosed
+            ? status.set(t.panels.outlineAutoClosed)
+            : desktop.setPreferences({ ...$preferences, rightClosed: !$preferences.rightClosed })}
         ><PanelRight size={17} /></button
       >
       <button title="设置" aria-label="设置" on:click={openSettings}><Settings size={17} /></button>
@@ -505,8 +527,8 @@
     onClose={(id) => void desktop.closeTab(id)}
     onCreate={desktop.createDocument}
   />
-  <div class="desktop-workspace">
-    {#if !$preferences.leftClosed && !immersive && ($workspace.root || !active)}
+  <div class="desktop-workspace" use:measureWorkspace>
+    {#if paneLayout.leftVisible}
       <aside class="desktop-sidebar">
         <FileBrowser
           workspace={$workspace}
@@ -528,8 +550,9 @@
         tabindex="0"
         aria-label="调整文件栏宽度"
         aria-valuemin="180"
-        aria-valuemax="460"
-        aria-valuenow={$preferences.leftWidth}
+        aria-valuemax={Math.round(paneLayout.leftMaxWidth)}
+        aria-valuenow={Math.round(paneLayout.leftWidth)}
+        aria-orientation="horizontal"
         on:pointerdown={(event) => resizeStart(event, 'left')}
         on:keydown={(event) => resizeKey(event, 'left')}
       ></div>
@@ -602,6 +625,7 @@
                 bind:this={previewRef}
                 content={active.content}
                 {outline}
+                {language}
                 filePath={active.path}
                 preferences={previewPreferences}
                 fallbackRenderStatus={markdownStatus}
@@ -618,7 +642,10 @@
                 on:renderHtml={(event) => acceptHtml(event.detail)}
                 on:readingProgress={(event) => (readingProgress = event.detail)}
                 on:activeLine={(event) => (activeLine = event.detail)}
-                on:linkStatus={(event) => (linkStatus = event.detail)}
+                on:linkStatus={(event) => {
+                  linkStatus = event.detail;
+                  if (event.detail.failed) status.set(t.preview.linkCheckFailed);
+                }}
               />
             {/if}
             {#if active.mode === 'visual'}
@@ -658,15 +685,16 @@
         </div>
       {/if}
     </section>
-    {#if !$preferences.rightClosed && active && !immersive}
+    {#if paneLayout.rightVisible}
       <div
         class="pane-resizer"
         role="slider"
         tabindex="0"
         aria-label="调整大纲宽度"
         aria-valuemin="180"
-        aria-valuemax="400"
-        aria-valuenow={$preferences.rightWidth}
+        aria-valuemax={Math.round(paneLayout.rightMaxWidth)}
+        aria-valuenow={Math.round(paneLayout.rightWidth)}
+        aria-orientation="horizontal"
         on:pointerdown={(event) => resizeStart(event, 'right')}
         on:keydown={(event) => resizeKey(event, 'right')}
       ></div>
@@ -816,6 +844,36 @@
             >设为默认 Markdown 应用</button
           >{#if exportHtmlFile}<button disabled={!renderedHtml} on:click={exportHtml}>导出 HTML</button
             ><button disabled={!active} on:click={() => window.print()}>打印 / PDF</button>{/if}
+        </div>
+      </fieldset>
+      <fieldset class="about-settings">
+        <legend>{t.about.title}</legend>
+        <strong>{editionDisplayName}</strong>
+        <dl>
+          <dt>{t.about.version}</dt>
+          <dd>{appVersion || '—'}</dd>
+          <dt>{t.about.author}</dt>
+          <dd>T-meow</dd>
+          <dt>{t.about.license}</dt>
+          <dd>WTFPL v2</dd>
+        </dl>
+        <div class="settings-buttons">
+          <a
+            href="https://t-meow.github.io/md-view/"
+            target="_blank"
+            rel="noopener noreferrer"
+            on:click|preventDefault={() =>
+              api.openExternalUrl('https://t-meow.github.io/md-view/').catch(desktop.error)}
+            >{t.about.website}</a
+          >
+          <a
+            href="https://github.com/T-meow/md-view"
+            target="_blank"
+            rel="noopener noreferrer"
+            on:click|preventDefault={() =>
+              api.openExternalUrl('https://github.com/T-meow/md-view').catch(desktop.error)}
+            >{t.about.repository}</a
+          >
         </div>
       </fieldset>
     </div>

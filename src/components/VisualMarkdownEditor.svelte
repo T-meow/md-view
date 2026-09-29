@@ -20,6 +20,7 @@
   let renderId = 0;
   let savedRange: Range | null = null;
   let rawBlocks = new Map<string, string>();
+  let sourceBlocks = new WeakMap<HTMLElement, { raw: string; html: string; start: string | null }>();
 
   marked.setOptions({
     gfm: true,
@@ -48,20 +49,46 @@
   function renderEditor(source: string) {
     renderId += 1;
     rawBlocks = new Map();
-    const html = buildVisualHtml(source);
-    host.innerHTML = html || '<p><br></p>';
+    sourceBlocks = new WeakMap();
+    host.replaceChildren(buildVisualContent(source));
+    if (!host.childNodes.length) host.innerHTML = '<p><br></p>';
     lastRendered = source;
     lastRenderedPath = filePath;
     lastEmitted = source;
     annotateHeadings();
   }
 
-  function buildVisualHtml(source: string) {
+  function buildVisualContent(source: string) {
+    source = source.replace(/\r\n?/g, '\n');
     const tokens = marked.lexer(source) as any[];
-    return tokens
-      .map((token, index) => tokenToHtml(token, index))
-      .filter(Boolean)
-      .join('\n');
+    const fragment = document.createDocumentFragment();
+    const append = (html: string, raw: string) => {
+      const template = document.createElement('template');
+      template.innerHTML = html;
+      if (template.content.children.length === 1) {
+        const block = template.content.firstElementChild as HTMLElement;
+        sourceBlocks.set(block, { raw, html: block.innerHTML, start: block.getAttribute('start') });
+      }
+      fragment.append(template.content);
+    };
+    let cursor = 0;
+    for (const [index, token] of tokens.entries()) {
+      const start = source.indexOf(token.raw, cursor);
+      if (start < 0) {
+        // Keep unusual syntax intact if lexer offsets cannot be recovered safely.
+        fragment.replaceChildren();
+        append(unsupportedBlock(source, 0), source);
+        return fragment;
+      }
+      const gap = source.slice(cursor, start);
+      // Marked stores reference definitions outside the token list.
+      if (gap.trim()) append(unsupportedBlock(gap, -index - 1), gap);
+      append(tokenToHtml(token, index), token.raw);
+      cursor = start + token.raw.length;
+    }
+    const tail = source.slice(cursor);
+    if (tail.trim()) append(unsupportedBlock(tail, tokens.length), tail);
+    return fragment;
   }
 
   function tokenToHtml(token: any, index: number) {
@@ -71,7 +98,7 @@
     }
 
     try {
-      const html = marked.parse(token.raw ?? '', { async: false }) as string;
+      const html = marked.parser([token], { async: false }) as string;
       return DOMPurify.sanitize(resolveImageSources(html), {
         ADD_ATTR: ['class', 'target', 'rel', 'src', 'alt', 'href', 'data-original-src'],
         ADD_URI_SAFE_ATTR: ['src'],
@@ -188,15 +215,20 @@
         blocks.push(block);
       }
     });
-    return blocks.join('\n\n').replace(/\n{3,}/g, '\n\n');
+    return blocks.join('\n\n');
   }
 
   function serializeBlock(node: Node): string {
     if (node.nodeType === Node.TEXT_NODE) {
-      return normalizeText(node.textContent ?? '');
+      return escapeMarkdownText(node.textContent ?? '');
     }
 
     if (!(node instanceof HTMLElement)) return '';
+
+    const original = sourceBlocks.get(node);
+    if (original && original.html === node.innerHTML && original.start === node.getAttribute('start')) {
+      return original.raw;
+    }
 
     const rawId = node.dataset.rawId;
     if (rawId) {
@@ -227,24 +259,26 @@
 
   function serializeInlineNode(node: Node): string {
     if (node.nodeType === Node.TEXT_NODE) {
-      return normalizeText(node.textContent ?? '');
+      return escapeMarkdownText(node.textContent ?? '');
     }
     if (!(node instanceof HTMLElement)) return '';
 
     const tag = node.tagName.toLowerCase();
     const inner = serializeInlineChildren(node);
-    if (tag === 'br') return '\n';
+    if (tag === 'br') return '  \n';
     if (tag === 'strong' || tag === 'b') return inner ? `**${inner}**` : '';
     if (tag === 'em' || tag === 'i') return inner ? `*${inner}*` : '';
+    if (tag === 'del' || tag === 's') return inner ? `~~${inner}~~` : '';
+    if (node instanceof HTMLInputElement && node.type === 'checkbox') return node.checked ? '[x]' : '[ ]';
     if (tag === 'code') return inlineCode(node.textContent ?? '');
     if (tag === 'a') {
       const href = node.getAttribute('href') ?? '';
-      return href ? `[${inner || href}](${href})` : inner;
+      return href ? `[${inner || escapeMarkdownText(href)}](${linkDestination(href, node.title)})` : inner;
     }
     if (tag === 'img') {
       const alt = node.getAttribute('alt') ?? '';
       const src = node.dataset.originalSrc || node.getAttribute('src') || '';
-      return src ? `![${alt}](${src})` : '';
+      return src ? `![${escapeMarkdownText(alt)}](${linkDestination(src, node.title)})` : '';
     }
     if (tag === 'ul' || tag === 'ol' || tag === 'table' || tag === 'pre' || tag === 'blockquote') {
       return `\n${serializeBlock(node)}\n`;
@@ -264,7 +298,9 @@
     const code = node.querySelector('code') ?? node;
     const className = code.getAttribute('class') ?? '';
     const language = className.match(/language-([^\s]+)/)?.[1] ?? '';
-    return `\`\`\`${language}\n${(code.textContent ?? '').trimEnd()}\n\`\`\``;
+    const content = code.textContent ?? '';
+    const fence = '`'.repeat(Math.max(3, longestBacktickRun(content) + 1));
+    return `${fence}${language}\n${content}${content.endsWith('\n') ? '' : '\n'}${fence}`;
   }
 
   function serializeList(node: HTMLElement, ordered: boolean) {
@@ -273,12 +309,13 @@
     ) as HTMLElement[];
     return items
       .map((item, index) => {
-        const marker = ordered ? `${index + 1}. ` : '- ';
+        const start = Number.parseInt(node.getAttribute('start') ?? '1', 10);
+        const marker = ordered ? `${index + (Number.isFinite(start) ? start : 1)}. ` : '- ';
         const content = serializeListItem(item);
         const lines = content.split('\n');
         return `${marker}${lines[0] ?? ''}${lines
           .slice(1)
-          .map((line) => `\n  ${line}`)
+          .map((line) => `\n${' '.repeat(marker.length)}${line}`)
           .join('')}`;
       })
       .join('\n');
@@ -287,23 +324,25 @@
   function serializeListItem(item: HTMLElement) {
     const parts: string[] = [];
     let inline = '';
+    const flushInline = () => {
+      if (inline.trim()) parts.push(inline.trim());
+      inline = '';
+    };
 
     item.childNodes.forEach((child) => {
-      if (child instanceof HTMLElement && ['ul', 'ol'].includes(child.tagName.toLowerCase())) {
-        if (inline.trim()) {
-          parts.push(inline.trim());
-          inline = '';
-        }
+      if (
+        child instanceof HTMLElement &&
+        /^(ul|ol|p|div|blockquote|pre|table|h[1-6])$/.test(child.tagName.toLowerCase())
+      ) {
+        flushInline();
         parts.push(serializeBlock(child));
       } else {
         inline += serializeInlineNode(child);
       }
     });
 
-    if (inline.trim()) {
-      parts.unshift(inline.trim());
-    }
-    return parts.join('\n');
+    flushInline();
+    return parts.join('\n\n');
   }
 
   function serializeTable(node: HTMLElement) {
@@ -316,7 +355,10 @@
     const width = Math.max(...table.map((row) => row.length));
     const header = padRow(table[0] ?? [], width);
     const body = table.slice(1).map((row) => padRow(row, width));
-    const separator = Array.from({ length: width }, () => '---');
+    const separator = Array.from({ length: width }, (_, index) => {
+      const align = rows[0].children[index]?.getAttribute('align');
+      return align === 'left' ? ':---' : align === 'center' ? ':---:' : align === 'right' ? '---:' : '---';
+    });
     return [header, separator, ...body].map((row) => `| ${row.join(' | ')} |`).join('\n');
   }
 
@@ -326,15 +368,32 @@
 
   function inlineCode(text: string) {
     const clean = text.replace(/\n/g, ' ');
-    return clean.includes('`') ? `\`\`${clean}\`\`` : `\`${clean}\``;
+    const fence = '`'.repeat(longestBacktickRun(clean) + 1);
+    const padding = /^`|`$/.test(clean) || (/^ .* $/.test(clean) && /\S/.test(clean)) ? ' ' : '';
+    return `${fence}${padding}${clean}${padding}${fence}`;
+  }
+
+  function longestBacktickRun(value: string) {
+    let length = 0;
+    for (const match of value.matchAll(/`+/g)) length = Math.max(length, match[0].length);
+    return length;
+  }
+
+  function linkDestination(url: string, title: string) {
+    const escaped = url.replace(/[<>\\\r\n]/g, encodeURIComponent);
+    return `<${escaped}>${title ? ` "${title.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : ''}`;
   }
 
   function escapeTableCell(value: string) {
     return value.replace(/\n/g, ' ').replace(/\|/g, '\\|');
   }
 
-  function normalizeText(text: string) {
-    return text.replace(/\u00a0/g, ' ');
+  function escapeMarkdownText(text: string) {
+    return text
+      .replace(/\u00a0/g, ' ')
+      .replace(/[\\`*_\[\]<>~&]/g, '\\$&')
+      .replace(/^([ \t]*)([#+=\-])/gm, '$1\\$2')
+      .replace(/^([ \t]*\d+)([.)])(?=[ \t])/gm, '$1\\$2');
   }
 
   function escapeHtml(value: string) {

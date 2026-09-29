@@ -3,6 +3,9 @@
   import { renderFastPreview, renderFullMarkdown } from '../markdown/renderers/deferred';
   import { openExternalUrl, validateLocalLinks } from '../runtime';
   import type { Heading, LinkValidationResult } from '../types';
+  import { text, type Language } from '../i18n';
+  import { enhanceCodeBlocks, createCopyFeedback } from '../markdown/codeTools';
+  import { resolveLocalPath } from '../fileAssets';
 
   export let content = '';
   export let outline: Heading[] = [];
@@ -11,6 +14,7 @@
   export let fallbackRenderStatus = '';
   export let readingFocusEnabled = true;
   export let initialScroll = 0;
+  export let language: Language = 'zh';
 
   const dispatch = createEventDispatcher<{
     activeLine: number;
@@ -19,7 +23,7 @@
     renderHtml: string;
     renderStatus: string;
     readingProgress: number;
-    linkStatus: { broken: number; total: number };
+    linkStatus: { broken: number; total: number; failed?: boolean };
   }>();
   let html = '';
   let previewHost: HTMLElement;
@@ -37,6 +41,15 @@
   let blockLines = new WeakMap<HTMLElement, number>();
   let layoutDirty = true;
   let restoredPosition = false;
+  const copyFeedback = createCopyFeedback(() => text[language].code);
+  $: localizeTools(language, previewHost);
+  function localizeTools(value: Language, host: HTMLElement | undefined) {
+    copyFeedback.reset();
+    if (host) {
+      enhanceCodeBlocks(host, text[value].code);
+      invalidateLayout();
+    }
+  }
   function invalidateLayout() {
     layoutDirty = true;
     scheduleReadingPositionUpdate();
@@ -51,6 +64,7 @@
     previewHost.addEventListener('click', handleClick);
     previewHost.addEventListener('scroll', scheduleReadingPositionUpdate, { passive: true });
     previewHost.addEventListener('load', invalidateLayout, true);
+    previewHost.addEventListener('toggle', invalidateLayout, true);
     resizeObserver = new ResizeObserver(invalidateLayout);
     resizeObserver.observe(previewHost);
     return () => {
@@ -58,7 +72,9 @@
       previewHost.removeEventListener('scroll', scheduleReadingPositionUpdate);
       dispatch('position', previewHost.scrollTop);
       renderToken += 1;
+      copyFeedback.reset();
       previewHost.removeEventListener('load', invalidateLayout, true);
+      previewHost.removeEventListener('toggle', invalidateLayout, true);
       resizeObserver?.disconnect();
       if (scrollFrame) {
         cancelAnimationFrame(scrollFrame);
@@ -73,6 +89,7 @@
 
   async function renderPreview(source: string, headings: Heading[], markdownPath: string, prefs: unknown) {
     const token = ++renderToken;
+    copyFeedback.reset();
     if (deferredRenderTimer) {
       clearTimeout(deferredRenderTimer);
       deferredRenderTimer = 0;
@@ -83,6 +100,7 @@
       applyRenderResult(quick, false);
       await tickAfterHtml();
       if (token !== renderToken) return;
+      enhanceCodeBlocks(previewHost, text[language].code);
       if (!restoredPosition) {
         previewHost.scrollTop = initialScroll;
       }
@@ -95,10 +113,13 @@
       }, 0);
     } catch (error) {
       if (token !== renderToken) return;
+      copyFeedback.reset();
       html = `<pre class="markdown-render-error">${escapeHtml(String(error))}</pre>`;
       dispatch('renderStatus', fallbackRenderStatus);
       dispatch('renderHtml', html);
       await tickAfterHtml();
+      if (token !== renderToken) return;
+      layoutDirty = true;
       resetReadingPosition();
       updateReadingPosition();
     }
@@ -118,35 +139,44 @@
       applyRenderResult(result, true);
       await tickAfterHtml();
       if (token !== renderToken) return;
+      enhanceCodeBlocks(previewHost, text[language].code);
       previewHost.scrollTop = scroll;
       restoredPosition = true;
       layoutDirty = true;
       resetReadingPosition();
       updateReadingPosition();
       if (shouldValidateLocalLinks(prefs) && result.linkTargets?.length) {
-        const validation = await validateLocalLinks(
-          markdownPath,
-          result.linkTargets,
-          Array.from(previewHost.querySelectorAll<HTMLElement>('[id]')).map((node) => node.id)
-        );
-        if (token === renderToken) {
-          applyLinkValidation(validation);
+        try {
+          const validation = await validateLocalLinks(
+            markdownPath,
+            result.linkTargets,
+            Array.from(previewHost.querySelectorAll<HTMLElement>('[id]')).map((node) => node.id)
+          );
+          if (token === renderToken) applyLinkValidation(validation);
+        } catch {
+          if (token !== renderToken) return;
+          dispatch('linkStatus', { broken: 0, total: 0, failed: true });
+          dispatch('renderStatus', `${result.status} · ${text[language].preview.linkCheckFailed}`);
         }
       } else {
         dispatch('linkStatus', { broken: 0, total: 0 });
       }
     } catch (error) {
       if (token !== renderToken) return;
+      copyFeedback.reset();
       html = `<pre class="markdown-render-error">${escapeHtml(String(error))}</pre>`;
       dispatch('renderStatus', fallbackRenderStatus);
       dispatch('renderHtml', html);
       await tickAfterHtml();
+      if (token !== renderToken) return;
+      layoutDirty = true;
       resetReadingPosition();
       updateReadingPosition();
     }
   }
 
   function applyRenderResult(result: { html: string; status: string }, isComplete: boolean) {
+    copyFeedback.reset();
     html = result.html;
     dispatch('renderStatus', isComplete ? result.status : `${result.status}...`);
     dispatch('renderHtml', isComplete ? result.html : '');
@@ -188,33 +218,41 @@
       return;
     }
 
-    const anchorLink = target?.closest('a[data-local-anchor]');
-    if (anchorLink instanceof HTMLAnchorElement) {
-      event.preventDefault();
-      scrollToAnchor(anchorLink.dataset.localAnchor ?? '');
-      return;
-    }
-
-    const externalLink = target?.closest('a[href]');
-    if (externalLink instanceof HTMLAnchorElement && isExternalUrl(externalLink.href)) {
-      event.preventDefault();
-      void openExternalUrl(externalLink.href);
-      return;
-    }
-
-    const link = target?.closest('a[data-local-file]');
+    const link = target?.closest('a');
     if (!(link instanceof HTMLAnchorElement)) return;
-    const localFile = link.dataset.localFile;
-    if (!localFile) return;
+    const href = link.getAttribute('href')?.trim();
+    if (href === undefined) return;
     event.preventDefault();
-    const fragment = (link.dataset.sourceHref || '').split('#').slice(1).join('#');
-    let anchor = fragment;
-    try {
-      anchor = decodeURIComponent(fragment);
-    } catch {
-      /* Preserve malformed literal fragments. */
+
+    if (link.dataset.localAnchor !== undefined) {
+      scrollToAnchor(link.dataset.localAnchor);
+      return;
     }
-    dispatch('openLocalFile', { path: localFile, anchor: anchor || undefined });
+
+    // A local file is rendered with href="#". On Windows, link.href resolves
+    // that against http://tauri.localhost, so classify the original attribute.
+    if (link.dataset.localFile) {
+      dispatch('openLocalFile', {
+        path: link.dataset.localFile,
+        anchor: link.dataset.sourceHref?.split('#').slice(1).join('#') || undefined
+      });
+      return;
+    }
+
+    if (isExternalUrl(href)) {
+      void openExternalUrl(link.href);
+      return;
+    }
+    if (href.startsWith('#')) {
+      scrollToAnchor(href.slice(1));
+      return;
+    }
+    const localFile = resolveLocalPath(href, filePath);
+    if (!localFile) return;
+    dispatch('openLocalFile', {
+      path: localFile,
+      anchor: href.split('#').slice(1).join('#') || undefined
+    });
   }
 
   export function scrollToAnchor(anchor: string) {
@@ -376,8 +414,10 @@
             ? 1
             : current;
     if (action === 'copy-source') {
-      void navigator.clipboard?.writeText(
-        wrapper.dataset.mermaidSource ?? button.parentElement?.dataset.mermaidSource ?? ''
+      void copyFeedback.copy(
+        button,
+        wrapper.dataset.mermaidSource ?? button.parentElement?.dataset.mermaidSource ?? '',
+        text[language].code.copySource
       );
       return;
     }
@@ -388,17 +428,20 @@
       svg.style.transform = `scale(${wrapper.dataset.mermaidScale})`;
       svg.style.transformOrigin = 'top center';
     }
+    invalidateLayout();
   }
 
   function handleCodeAction(button: HTMLButtonElement) {
     const pre = button.closest<HTMLElement>('pre');
     if (!pre) return;
     if (button.dataset.codeAction === 'copy') {
-      void navigator.clipboard?.writeText(pre.dataset.sourceCode ?? pre.textContent ?? '');
+      const code = pre.querySelector(':scope > code');
+      if (code) void copyFeedback.copy(button, code.textContent ?? '', text[language].code.copy);
       return;
     }
     if (button.dataset.codeAction === 'wrap') {
-      pre.classList.toggle('code-wrap');
+      button.setAttribute('aria-pressed', String(pre.classList.toggle('code-wrap')));
+      invalidateLayout();
     }
   }
 
@@ -412,7 +455,7 @@
   }
 
   function isExternalUrl(url: string) {
-    return /^(?:https?:|mailto:|tel:)/i.test(url);
+    return /^(?:https?:|mailto:|tel:|\/\/)/i.test(url);
   }
 
   async function tickAfterHtml() {

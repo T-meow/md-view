@@ -22,7 +22,7 @@ export function toImageAssetSrc(source: string | null | undefined, markdownPath 
 
 export function resolveLocalPath(source: string | null | undefined, markdownPath = '') {
   const rawSource = source?.trim();
-  if (!rawSource || EXTERNAL_SCHEME_PATTERN.test(rawSource)) {
+  if (!rawSource || /[\u0000-\u001f\u007f]/.test(rawSource) || EXTERNAL_SCHEME_PATTERN.test(rawSource)) {
     return '';
   }
   if (UNKNOWN_SCHEME_PATTERN.test(rawSource) && !FILE_SCHEME_PATTERN.test(rawSource) && !WINDOWS_ABSOLUTE_PATTERN.test(rawSource)) {

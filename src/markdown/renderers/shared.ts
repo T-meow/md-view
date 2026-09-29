@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify';
-import { isLocalMarkdownPath, resolveLocalPath, toImageAssetSrc } from '../../fileAssets';
+import { resolveLocalPath, toImageAssetSrc } from '../../fileAssets';
 import type { Heading, LinkValidationRequest } from '../../types';
 
 const SAFE_EXTRA_TAGS = [
@@ -65,7 +65,7 @@ export function postProcessMarkdownHtml(
 
   const links = template.content.querySelectorAll('a[href]');
   links.forEach((node) => {
-    const href = node.getAttribute('href') ?? '';
+    const href = (node.getAttribute('href') ?? '').trim();
     context.linkTargets?.push({ href, kind: 'link' });
     if (isExternalHref(href)) {
       node.setAttribute('target', '_blank');
@@ -76,7 +76,6 @@ export function postProcessMarkdownHtml(
       node.setAttribute('data-local-anchor', href.slice(1));
       return;
     }
-    if (!isLocalMarkdownPath(href)) return;
     const localPath = resolveLocalPath(href, context.markdownPath);
     if (!localPath) return;
     node.setAttribute('href', '#');
@@ -125,7 +124,7 @@ function stableHeadingId(heading: Heading, index: number) {
 }
 
 function isExternalHref(href: string) {
-  return /^(?:https?:|mailto:|tel:)/i.test(href);
+  return /^(?:https?:|mailto:|tel:|\/\/)/i.test(href);
 }
 
 function slugHeading(text: string, index: number) {

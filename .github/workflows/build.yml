@@ -93,7 +93,7 @@ jobs:
           path: |
             release/md-view-${{ matrix.edition }}_*.exe
             release/md-view-${{ matrix.edition }}_*.dmg
-          if-no-files-found: warn
+          if-no-files-found: error
 
   release:
     if: startsWith(github.ref, 'refs/tags/')

@@ -377,6 +377,7 @@
   background-position: center;
 }
 .desktop-outline {
+  min-width: 0;
   width: var(--outline-width);
   flex: 0 0 var(--outline-width);
   background: var(--panel-bg);
@@ -754,6 +755,28 @@
 }
 .settings-body textarea {
   resize: vertical;
+}
+.desktop-utilities button.auto-collapsed {
+  color: var(--muted);
+  border-style: dashed;
+  border-color: var(--border);
+}
+.about-settings dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 20px;
+  font-size: 12px;
+}
+.about-settings dt {
+  color: var(--muted);
+}
+.about-settings dd {
+  margin: 0;
+}
+.about-settings a {
+  color: var(--primary);
+  font-size: 12px;
+  text-underline-offset: 3px;
 }
 .settings-buttons {
   display: flex;

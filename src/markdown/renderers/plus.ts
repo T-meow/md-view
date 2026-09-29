@@ -463,7 +463,6 @@ function enhancePlusHtml(html: string, preferences: PlusPreferences, context: Ma
   const template = document.createElement('template');
   template.innerHTML = html;
   renderTocBlocks(template.content, preferences, context);
-  annotateCodeBlocks(template.content);
   enhanceAlertBlockquotes(template.content);
   enhanceInlineExtensions(template.content);
   return template.innerHTML;
@@ -501,39 +500,6 @@ function createTocElement(headings: Array<{ id: string; level: number; text: str
   });
   nav.append(title, list);
   return nav;
-}
-
-function annotateCodeBlocks(root: DocumentFragment) {
-  root.querySelectorAll('pre > code[class*="language-"]').forEach((code) => {
-    const language = Array.from(code.classList)
-      .find((className) => className.startsWith('language-'))
-      ?.replace(/^language-/, '');
-    const pre = code.parentElement;
-    if (!language || !pre || language === 'mermaid' || language === 'mmd') return;
-    pre.setAttribute('data-language', language);
-    pre.setAttribute('data-source-code', code.textContent ?? '');
-    if (!pre.querySelector('.markdown-code-toolbar')) {
-      pre.prepend(createCodeToolbar(language));
-    }
-  });
-}
-
-function createCodeToolbar(language: string) {
-  const toolbar = document.createElement('div');
-  toolbar.className = 'markdown-code-toolbar';
-  const label = document.createElement('span');
-  label.textContent = language;
-  toolbar.append(label, codeButton('复制', 'copy'), codeButton('换行', 'wrap'));
-  return toolbar;
-}
-
-function codeButton(label: string, action: string) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.textContent = label;
-  button.dataset.codeAction = action;
-  button.setAttribute('aria-label', label);
-  return button;
 }
 
 function enhanceAlertBlockquotes(root: DocumentFragment) {
