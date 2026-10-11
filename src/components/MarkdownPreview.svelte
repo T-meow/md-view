@@ -62,6 +62,7 @@
 
   onMount(() => {
     previewHost.addEventListener('click', handleClick);
+    previewHost.addEventListener('auxclick', handleAuxClick);
     previewHost.addEventListener('scroll', scheduleReadingPositionUpdate, { passive: true });
     previewHost.addEventListener('load', invalidateLayout, true);
     previewHost.addEventListener('toggle', invalidateLayout, true);
@@ -69,6 +70,7 @@
     resizeObserver.observe(previewHost);
     return () => {
       previewHost.removeEventListener('click', handleClick);
+      previewHost.removeEventListener('auxclick', handleAuxClick);
       previewHost.removeEventListener('scroll', scheduleReadingPositionUpdate);
       dispatch('position', previewHost.scrollTop);
       renderToken += 1;
@@ -191,6 +193,13 @@
     scheduleReadingPositionUpdate();
   }
 
+  function handleAuxClick(event: MouseEvent) {
+    const target = event.target as Element | null;
+    if (event.button === 1 && target?.closest('a[href]')) {
+      handleClick(event);
+    }
+  }
+
   function handleClick(event: MouseEvent) {
     const target = event.target as HTMLElement | null;
     const action = target?.closest('[data-mermaid-action]');
@@ -240,7 +249,7 @@
     }
 
     if (isExternalUrl(href)) {
-      void openExternalUrl(link.href);
+      void openExternalUrl(href.startsWith('//') ? `https:${href}` : href);
       return;
     }
     if (href.startsWith('#')) {

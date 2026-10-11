@@ -55,6 +55,7 @@ export const moveDraft = (from: string, to: string) => invoke<void>('move_draft'
 export const initialOpenPaths = () => invoke<string[]>('initial_open_paths');
 export const openDefaultAppSettings = () => invoke<void>('open_default_app_settings');
 export const openExternalUrl = (url: string) => invoke<void>('open_external_url', { url });
+export const openLocalPath = (path: string) => invoke<void>('open_local_path', { path });
 export const validateLocalLinks = (path: string, links: LinkValidationRequest[], anchors: string[] = []) =>
   invoke<LinkValidationResult[]>('validate_local_links', { markdownPath: path, links, anchors });
 export const exportHtml = (path: string, html: string) => invoke<void>('export_html', { path, html });

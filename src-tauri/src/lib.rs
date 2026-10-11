@@ -498,6 +498,7 @@ pub fn run() {
             links::initial_open_paths,
             open_default_app_settings,
             open_external_url,
+            links::open_local_path,
             links::validate_local_links,
             links::export_html
         ])

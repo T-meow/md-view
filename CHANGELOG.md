@@ -1,5 +1,19 @@
 # 更新日志 / Changelog
 
+## 1.2.1 — 2026-10-11
+
+- 本地 `.md` / `.markdown` 链接在应用标签页中打开；其他本地文件及文件夹交给系统默认程序，例如 `.godot` 工程和 `.cmd` 启动器。
+- 启动本地文件时使用文件所在目录作为工作目录，正确处理中文、空格及相对路径，并在打开失败时显示错误。
+- 中键点击链接也使用应用的链接处理逻辑，避免浏览器默认跳转；网页链接使用原始地址打开，无协议网页链接按 HTTPS 处理。
+
+### English
+
+- Local `.md` / `.markdown` links open in app tabs. Other local files and folders open with their system default application, including `.godot` projects and `.cmd` launchers.
+- Local files open from their containing directory, with support for Unicode, spaces and relative paths. Opening failures are reported in the app.
+- Middle-clicks follow the same link handling as regular clicks. Web links use their original URLs, and protocol-relative web links use HTTPS.
+
+[与 1.2.0 比较 / Compare with 1.2.0](https://github.com/T-meow/md-view/compare/v1.2.0...v1.2.1)
+
 ## 1.2.0 — 2026-09-29
 
 此版本包含自 1.0.1 以来的桌面文件工作流更新；中间开发版本 1.1.0 未单独正式发布。

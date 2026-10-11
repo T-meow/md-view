@@ -263,6 +263,17 @@
       applyPendingJump();
     }
   }
+  async function openLocalLink(target: { path: string; anchor?: string }) {
+    try {
+      if (/\.(?:md|markdown)$/i.test(target.path)) {
+        await selectSearch({ ...target, label: '', detail: '' });
+      } else {
+        await api.openLocalPath(target.path);
+      }
+    } catch (cause) {
+      await desktop.error(cause);
+    }
+  }
   function applyPendingJump() {
     if (!pendingJump || pendingJump.id !== active?.id || !previewRef || !renderedHtml) return;
     const jump = pendingJump;
@@ -632,13 +643,7 @@
                 {readingFocusEnabled}
                 initialScroll={active.previewScroll}
                 on:position={(event) => documents.patch(docId, { previewScroll: event.detail })}
-                on:openLocalFile={(event) =>
-                  selectSearch({
-                    path: event.detail.path,
-                    anchor: event.detail.anchor,
-                    label: '',
-                    detail: ''
-                  })}
+                on:openLocalFile={(event) => void openLocalLink(event.detail)}
                 on:renderHtml={(event) => acceptHtml(event.detail)}
                 on:readingProgress={(event) => (readingProgress = event.detail)}
                 on:activeLine={(event) => (activeLine = event.detail)}

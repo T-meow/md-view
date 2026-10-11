@@ -1,15 +1,85 @@
 use crate::{
-    documents::{blocking, Result},
+    documents::{blocking, canonical, display_path, Result},
     LinkValidationRequest, LinkValidationResult,
 };
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Mutex, OnceLock},
 };
 
 type Cache = HashMap<String, ((u64, std::time::SystemTime), HashSet<String>)>;
 static ANCHORS: OnceLock<Mutex<Cache>> = OnceLock::new();
+
+#[tauri::command]
+pub async fn open_local_path(path: String) -> Result<()> {
+    blocking(move || {
+        if path.chars().any(|char| char.is_control()) {
+            return Err("Local paths cannot contain control characters.".into());
+        }
+        let path = PathBuf::from(path);
+        if !path.is_absolute() {
+            return Err("An absolute local path is required.".into());
+        }
+        let path = PathBuf::from(display_path(&canonical(&path)?));
+        open_with_default_app(&path)
+    })
+    .await
+}
+
+#[cfg(target_os = "windows")]
+fn open_with_default_app(path: &Path) -> Result<()> {
+    use windows::{
+        core::{w, HSTRING, PCWSTR},
+        Win32::{
+            Foundation::RPC_E_CHANGED_MODE,
+            System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED},
+            UI::{
+                Shell::{
+                    ShellExecuteExW, SEE_MASK_FLAG_NO_UI, SEE_MASK_NOASYNC, SHELLEXECUTEINFOW,
+                },
+                WindowsAndMessaging::SW_SHOWNORMAL,
+            },
+        },
+    };
+
+    let file = HSTRING::from(path.as_os_str());
+    let directory = HSTRING::from(path.parent().unwrap_or(path).as_os_str());
+    let mut info = SHELLEXECUTEINFOW {
+        cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
+        // Finish shell dispatch before releasing COM on this worker thread.
+        fMask: SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI,
+        lpVerb: w!("open"),
+        lpFile: PCWSTR(file.as_ptr()),
+        lpDirectory: PCWSTR(directory.as_ptr()),
+        nShow: SW_SHOWNORMAL.0,
+        ..Default::default()
+    };
+    let initialized = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) };
+    if initialized.is_err() && initialized != RPC_E_CHANGED_MODE {
+        return Err(initialized.to_string());
+    }
+    // Pass the path directly to the shell so spaces and command characters stay literal.
+    let result = unsafe { ShellExecuteExW(&mut info) };
+    if initialized.is_ok() {
+        unsafe { CoUninitialize() };
+    }
+    result.map_err(|error| format!("{}: {error}", path.display()))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn open_with_default_app(path: &Path) -> Result<()> {
+    #[cfg(target_os = "macos")]
+    let mut command = std::process::Command::new("open");
+    #[cfg(not(target_os = "macos"))]
+    let mut command = std::process::Command::new("xdg-open");
+    command
+        .arg(path)
+        .current_dir(path.parent().unwrap_or(path))
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("{}: {error}", path.display()))
+}
 
 #[tauri::command]
 pub async fn validate_local_links(

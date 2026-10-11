@@ -1,6 +1,6 @@
 [package]
 name = "md-view"
-version = "1.2.0"
+version = "1.2.1"
 description = "Lightweight local Markdown reader and editor"
 authors = ["Ferris"]
 edition = "2021"
@@ -31,7 +31,7 @@ blake3 = "1.8"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
-windows = { version = "=0.61.3", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell"] }
+windows = { version = "=0.61.3", features = ["Win32_Foundation", "Win32_System_Com", "Win32_System_Registry", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 windows-core = "=0.61.2"
 
 [target.'cfg(unix)'.dependencies]

@@ -4,7 +4,7 @@
 
 A lightweight Markdown reader and editor that keeps your files on your device. Open a README or a folder of documents, and switch between reading, source editing, visual editing and split preview.
 
-[Download v1.2.0](https://github.com/T-meow/md-view/releases/tag/v1.2.0) · [Website](https://t-meow.github.io/md-view/en/) · [Online demo](https://t-meow.github.io/md-view/play/) · [Changelog](CHANGELOG.md)
+[Download v1.2.1](https://github.com/T-meow/md-view/releases/tag/v1.2.1) · [Website](https://t-meow.github.io/md-view/en/) · [Online demo](https://t-meow.github.io/md-view/play/) · [Changelog](CHANGELOG.md)
 
 ## Download and get started
 
@@ -12,21 +12,18 @@ Choose your system and edition from [GitHub Releases](https://github.com/T-meow/
 
 | System | Download | How to run |
 | --- | --- | --- |
-| Windows x64 | `md-view-lite_1.2.0_windows-x64-portable.exe` or `md-view-plus_1.2.0_windows-x64-portable.exe` | Run the downloaded executable; the system needs the WebView2 runtime |
-| macOS Apple Silicon | A `.dmg` starting with `md-view-lite_1.2.0_` or `md-view-plus_1.2.0_` | Open the disk image and drag the app into Applications |
+| Windows x64 | `md-view-lite_1.2.1_windows-x64-portable.exe` or `md-view-plus_1.2.1_windows-x64-portable.exe` | Run the downloaded executable; the system needs the WebView2 runtime |
+| macOS Apple Silicon | A `.dmg` starting with `md-view-lite_1.2.1_` or `md-view-plus_1.2.1_` | Open the disk image and drag the app into Applications |
 
 These are the platforms with published binaries. Linux and Intel Mac binaries are not included. The macOS app is unsigned and not notarized, so the system may block the first launch.
 
-Create a document, open one or more files, open a folder, or drag files into the app. Local Markdown links open the target document in an app tab; website links open in your system browser. Press `Ctrl+S` to save. Closing an unsaved document prompts you to handle the changes.
+Create a document, open one or more files, open a folder, or drag files into the app. Local Markdown links open the target document in an app tab; other local files and folders open with their system default application, and website links open in your system browser. Press `Ctrl+S` to save. Closing an unsaved document prompts you to handle the changes.
 
-## What's new in 1.2.0
+## What's new in 1.2.1
 
-- **File workflow**: tabs, new documents, drag and drop, close, rename, move, trash and reveal in the system file manager. Tabs retain document content, source undo history, view mode and reading position.
-- **Adaptive sidebars**: panels shrink with the window, and the outline temporarily hides when space runs out. Enlarging the window restores your saved layout.
-- **Consistent code tools**: copy and wrap controls in Lite, Plus and the online demo, including code blocks without a language. Copying preserves indentation and newlines, confirms success only after the clipboard write, and allows retries after failure.
-- **Local navigation**: fixes local document links opening a browser; supports relative paths, Unicode, spaces and headings in other files.
-- **Editing and reading fixes**: improved preservation of code, lists, tables and reference links during visual editing; refreshed reading positions and cleaner printing.
-- **About and dependency updates**: version, author, website, repository and license in settings, plus dependency security updates.
+- **Local file links**: Markdown opens in app tabs. Other local files and folders, including `.godot` projects and `.cmd` launchers, open with their system default application.
+- **Launcher working directory**: local files open from their containing directory, supporting Unicode, spaces and relative paths. Opening failures are reported in the app.
+- **Middle-click handling**: middle-clicks use the same link handling as regular clicks, avoiding unintended browser navigation. Protocol-relative web links use HTTPS.
 
 See the [changelog](CHANGELOG.md) and [manual acceptance examples](docs/ui-update-checklist.md) for details.
 

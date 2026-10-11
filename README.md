@@ -4,7 +4,7 @@
 
 一个轻量、本地优先的 Markdown 阅读与编辑器。打开一份 README，或管理整个文档文件夹；在阅读、源码、可视化编辑与分屏预览之间切换，文件始终保存在自己的设备上。
 
-[下载 v1.2.0](https://github.com/T-meow/md-view/releases/tag/v1.2.0) · [产品官网](https://t-meow.github.io/md-view/) · [在线体验](https://t-meow.github.io/md-view/play/) · [更新日志](CHANGELOG.md)
+[下载 v1.2.1](https://github.com/T-meow/md-view/releases/tag/v1.2.1) · [产品官网](https://t-meow.github.io/md-view/) · [在线体验](https://t-meow.github.io/md-view/play/) · [更新日志](CHANGELOG.md)
 
 ## 下载与开始使用
 
@@ -12,23 +12,20 @@
 
 | 系统 | 下载文件 | 使用方式 |
 | --- | --- | --- |
-| Windows x64 | `md-view-lite_1.2.0_windows-x64-portable.exe` 或 `md-view-plus_1.2.0_windows-x64-portable.exe` | 下载后直接运行，需要系统提供 WebView2 运行环境 |
-| macOS Apple Silicon | 文件名以 `md-view-lite_1.2.0_` 或 `md-view-plus_1.2.0_` 开头的 `.dmg` | 打开磁盘映像，将应用拖入 Applications |
+| Windows x64 | `md-view-lite_1.2.1_windows-x64-portable.exe` 或 `md-view-plus_1.2.1_windows-x64-portable.exe` | 下载后直接运行，需要系统提供 WebView2 运行环境 |
+| macOS Apple Silicon | 文件名以 `md-view-lite_1.2.1_` 或 `md-view-plus_1.2.1_` 开头的 `.dmg` | 打开磁盘映像，将应用拖入 Applications |
 
 当前公开包覆盖以上平台；不包含 Linux 或 Intel Mac 的预构建包。macOS 应用尚未签名和公证，首次打开可能受到系统拦截。
 
-启动后可新建文档、打开一个或多个文件，也可打开文件夹或直接拖入文件。点击文档里的本地 Markdown 链接，会在应用标签页中打开对应文件；网页链接由系统浏览器打开。修改后按 `Ctrl+S` 保存，未保存文档关闭时会提示处理。
+启动后可新建文档、打开一个或多个文件，也可打开文件夹或直接拖入文件。点击文档里的本地 Markdown 链接，会在应用标签页中打开对应文件；其他本地文件和文件夹交给系统默认程序，网页链接由系统浏览器打开。修改后按 `Ctrl+S` 保存，未保存文档关闭时会提示处理。
 
-## 1.2.0 更新
+## 1.2.1 更新
 
-- **更完整的文件工作流**：多标签、新建、拖放打开、关闭文件，以及重命名、移动、回收站和系统定位。切换标签保留文档内容、源码撤销历史、视图和阅读位置。
-- **自适应侧栏**：窗口缩小时收窄两侧栏，空间不足时临时收起大纲；扩大窗口后恢复，不覆盖手动设置。
-- **统一代码复制**：Lite、Plus 和网页体验都支持代码块复制与换行，包括没有语言标记的代码块。复制保留缩进和换行，成功后才显示“已复制”，失败可重试。
-- **应用内本地跳转**：修复本地文档链接误开浏览器的问题，支持中文、空格、相对路径和跨文件章节跳转。
-- **编辑与阅读修复**：改善可视化编辑对代码、列表、表格和引用链接的保留；修复阅读位置更新，并隐藏打印中的代码工具栏。
-- **关于与依赖更新**：设置中显示版本、作者、官网、仓库和许可证；同步更新存在已知安全问题的依赖。
+- **本地文件链接**：Markdown 在应用内打开，`.godot`、`.cmd` 等其他本地文件和文件夹交给系统默认程序。
+- **启动器工作目录**：使用目标文件所在目录启动，支持中文、空格和相对路径，打开失败时显示错误。
+- **中键链接处理**：中键点击与普通点击使用相同逻辑，避免绕过应用跳转到浏览器；无协议网页链接使用 HTTPS。
 
-完整说明见 [更新日志](CHANGELOG.md)，操作验收样例见 [1.2.0 验收清单](docs/ui-update-checklist.md)。
+完整说明见 [更新日志](CHANGELOG.md)，操作验收样例见 [1.2.1 验收清单](docs/ui-update-checklist.md)。
 
 ## Lite 与 Plus
 
