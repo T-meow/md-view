@@ -70,9 +70,10 @@ jobs:
         run: npm run check:editions
 
       - name: Check file behavior
-        run: |
-          npm test
-          cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
+        run: npm test
+
+      - name: Check native file behavior
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
 
       - name: Read edition version
         id: edition-version

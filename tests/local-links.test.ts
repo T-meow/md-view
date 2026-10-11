@@ -58,8 +58,8 @@ async function setup(content: string) {
   await vi.waitFor(() => expect(document.querySelector('.markdown-preview a')).not.toBeNull());
   return document.querySelector<HTMLAnchorElement>('.markdown-preview a')!;
 }
-function click(link: HTMLAnchorElement) {
-  const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+function click(link: HTMLAnchorElement, type: 'click' | 'auxclick' = 'click') {
+  const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: type === 'auxclick' ? 1 : 0 });
   (link.querySelector('strong') ?? link).dispatchEvent(event);
   expect(event.defaultPrevented).toBe(true);
 }
@@ -121,15 +121,38 @@ describe.each(['Lite', 'Plus'])('%s local document navigation', (edition) => {
     expect(scroll).toHaveBeenCalledOnce();
   });
 
-  it.each(['https://example.com/note.md', 'mailto:hello@example.com', '//example.com/note.md'])(
+  it.each([
+    ['http://example.com/note.md', 'http://example.com/note.md'],
+    ['https://example.com/note.md', 'https://example.com/note.md'],
+    ['mailto:hello@example.com', 'mailto:hello@example.com'],
+    ['//example.com/note.md', 'https://example.com/note.md']
+  ])(
     'still opens external %s using the system browser',
-    async (href) => {
+    async (href, expectedUrl) => {
       const link = await setup(`[网站](${href})`);
       click(link);
-      expect(mocks.external).toHaveBeenCalledExactlyOnceWith(new URL(href, document.baseURI).href);
+      expect(mocks.external).toHaveBeenCalledExactlyOnceWith(expectedUrl);
       expect(local).not.toHaveBeenCalled();
     }
   );
+
+  it.each([
+    ['docs/说明.md', 'D:/Projects/示例项目/docs/说明.md'],
+    ['../MONSTER%20MUSCOMORPH/Preview.cmd', 'D:/Projects/示例项目/../MONSTER MUSCOMORPH/Preview.cmd'],
+    ['../MONSTER%20MUSCOMORPH/godot/project.godot', 'D:/Projects/示例项目/../MONSTER MUSCOMORPH/godot/project.godot']
+  ])('routes middle-clicks on %s to the local file handler', async (href, path) => {
+    const link = await setup(`[**打开文件**](<${href}>)`);
+    click(link, 'auxclick');
+    expect(local).toHaveBeenCalledExactlyOnceWith({ path, anchor: undefined });
+    expect(mocks.external).not.toHaveBeenCalled();
+  });
+
+  it('opens protocol-relative web links over HTTPS on middle-click', async () => {
+    const link = await setup('[网站](//example.com/note.md)');
+    click(link, 'auxclick');
+    expect(mocks.external).toHaveBeenCalledExactlyOnceWith('https://example.com/note.md');
+    expect(local).not.toHaveBeenCalled();
+  });
 });
 
 it('scrolls to an encoded in-document anchor without opening a file or browser', async () => {
