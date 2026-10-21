@@ -15,6 +15,7 @@ mod drafts;
 #[cfg(test)]
 mod io_metrics;
 mod links;
+mod navigation;
 #[cfg(windows)]
 mod recycle;
 mod workspace;
@@ -238,40 +239,51 @@ fn export_html(path: String, html: String) -> AppResult<()> {
 }
 
 fn extract_headings_from_content(content: &str) -> Vec<Heading> {
+    use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
+
+    let source = content.replace("\r\n", "\n").replace('\r', "\n");
+    let line_starts: Vec<_> = std::iter::once(0)
+        .chain(
+            source
+                .bytes()
+                .enumerate()
+                .filter_map(|(i, byte)| (byte == b'\n').then_some(i + 1)),
+        )
+        .collect();
+    let options = Options::ENABLE_STRIKETHROUGH
+        | Options::ENABLE_YAML_STYLE_METADATA_BLOCKS
+        | Options::ENABLE_PLUSES_DELIMITED_METADATA_BLOCKS;
     let mut headings = Vec::new();
-    let mut in_fence = false;
-
-    for (index, line) in content.lines().enumerate() {
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
-            in_fence = !in_fence;
-            continue;
+    let mut current: Option<Heading> = None;
+    for (event, range) in Parser::new_ext(&source, options).into_offset_iter() {
+        match event {
+            Event::Start(Tag::Heading { level, .. }) => {
+                let line = line_starts.partition_point(|start| *start <= range.start);
+                current = Some(Heading {
+                    level: level as usize,
+                    text: String::new(),
+                    line,
+                    anchor: format!("heading-{line}"),
+                });
+            }
+            Event::Text(text) | Event::Code(text) => {
+                if let Some(heading) = current.as_mut() {
+                    heading.text.push_str(&text);
+                }
+            }
+            Event::SoftBreak | Event::HardBreak => {
+                if let Some(heading) = current.as_mut() {
+                    heading.text.push('\n');
+                }
+            }
+            Event::End(TagEnd::Heading(_)) => {
+                if let Some(heading) = current.take() {
+                    headings.push(heading);
+                }
+            }
+            _ => {}
         }
-        if in_fence || !trimmed.starts_with('#') {
-            continue;
-        }
-
-        let level = trimmed.chars().take_while(|char| *char == '#').count();
-        if level == 0 || level > 6 {
-            continue;
-        }
-        let rest = &trimmed[level..];
-        if !rest.starts_with(' ') {
-            continue;
-        }
-        let text = rest.trim().trim_end_matches('#').trim().to_string();
-        if text.is_empty() {
-            continue;
-        }
-        let line_number = index + 1;
-        headings.push(Heading {
-            level,
-            text,
-            line: line_number,
-            anchor: format!("heading-{line_number}"),
-        });
     }
-
     headings
 }
 
@@ -477,6 +489,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(workspace::WorkspaceState::default())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(navigation::plugin())
         .invoke_handler(tauri::generate_handler![
             documents::document_open,
             documents::document_save,
@@ -622,6 +635,26 @@ fn to_error<E: std::fmt::Display>(error: E) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn headings_preserve_setext_lines_and_skip_fenced_examples() {
+        let source = "---\ntitle: hidden\n---\n\n````md\n```\n# hidden\n````\n\nVisible **title**\n====\n\n## End";
+        let headings = extract_headings_from_content(source);
+        assert_eq!(
+            headings
+                .iter()
+                .map(|h| (h.text.as_str(), h.line, h.level))
+                .collect::<Vec<_>>(),
+            vec![("Visible title", 10, 1), ("End", 13, 2)],
+        );
+        let anchors = heading_anchor_set(&headings);
+        assert!(anchors.contains("visible-title"));
+        assert!(anchors.contains("heading-10"));
+        assert!(!anchors.contains("hidden"));
+        let multiline = extract_headings_from_content("Multi\nline\n---\n\n# Last");
+        assert_eq!(multiline[0].text, "Multi\nline");
+        assert_eq!(multiline[1].line, 5);
+    }
 
     #[test]
     fn supported_text_extensions_are_allowed() {

@@ -267,15 +267,9 @@ pub fn save_document(request: SaveRequest) -> Result<SaveReply> {
 }
 
 pub fn is_link(metadata: &fs::Metadata) -> bool {
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::MetadataExt;
-        metadata.file_attributes() & 0x400 != 0
-    }
-    #[cfg(not(windows))]
-    {
-        metadata.file_type().is_symlink()
-    }
+    // On Windows Rust checks the name-surrogate tag, covering symlinks and
+    // junctions without rejecting OneDrive/cloud-file reparse points.
+    metadata.file_type().is_symlink()
 }
 
 #[tauri::command]

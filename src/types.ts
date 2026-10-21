@@ -50,6 +50,7 @@ export type Heading = {
   level: number;
   text: string;
   line: number;
+  endLine?: number;
   anchor: string;
 };
 

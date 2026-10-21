@@ -220,7 +220,7 @@ it.each(['md-view Lite', 'md-view Plus'])(
     expect(about.textContent).toContain(edition);
     expect(about.textContent).toContain('1.2.0');
     expect(about.textContent).toContain('T-meow');
-    expect(about.textContent).toContain('WTFPL v2');
+    expect(about.textContent).toContain('MIT');
     const website = about.querySelector<HTMLAnchorElement>('a')!;
     expect(website.textContent).toBe('项目官网');
     website.click();

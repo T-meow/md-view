@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { renderPlusMarkdown } from '../src/markdown/renderers/plus';
+import { renderLiteMarkdown } from '../src/markdown/renderers/lite';
 import { renderFastMarkdown } from '../src/markdown/renderers/fast';
 import { postProcessMarkdownHtml } from '../src/markdown/renderers/shared';
 import { extractHeadingsFromMarkdown } from '../src/outline';
@@ -51,6 +52,48 @@ describe('existing Markdown sample', () => {
     expect(html.querySelector('[data-local-file]')?.getAttribute('data-source-href')).toBe(
       './other.md#intro'
     );
+  });
+});
+
+describe.each(['Lite', 'Plus'])('%s heading positions and document safety', (edition) => {
+  const render = (source: string) => {
+    const context = { headings: extractHeadingsFromMarkdown(source), markdownPath: '/docs/sample.md' };
+    return edition === 'Lite' ? renderLiteMarkdown(source, context)
+      : renderPlusMarkdown(source, context, { ...defaultPlusPreferences, mermaidEnabled: false });
+  };
+
+  it('keeps Setext, multiline and ATX headings attached to the correct source lines', async () => {
+    const source = 'Title\n=====\n\n## Section\n\nMulti\nline\n----\n\n<h2>HTML only</h2>\n\n## Last';
+    const headings = extractHeadingsFromMarkdown(source);
+    expect(headings.map(({ text, line }) => [text, line])).toEqual([
+      ['Title', 1], ['Section', 4], ['Multi\nline', 6], ['Last', 12]
+    ]);
+    const html = document.createElement('div');
+    html.innerHTML = (await render(source)).html;
+    expect(html.querySelector('#heading-1')?.textContent).toBe('Title');
+    expect(html.querySelector('#section')?.parentElement?.id).toBe('heading-4');
+    expect(html.querySelector('#heading-6')?.textContent).toBe('Multi\nline');
+    expect(html.querySelector('#last')?.parentElement?.id).toBe('heading-12');
+    const fast = document.createElement('div');
+    fast.innerHTML = renderFastMarkdown(source, { headings, markdownPath: '' }).html;
+    expect(fast.querySelector('#heading-1')?.tagName).toBe('H1');
+    expect(fast.querySelector('#heading-6')?.tagName).toBe('H2');
+    expect(fast.textContent).not.toContain('=====');
+  });
+
+  it('ignores heading syntax in fences and metadata while retaining formatted heading text', () => {
+    const source = '---\ntitle: hidden\n---\n\n````md\n```\n# hidden\n````\n\nVisible **title**\n====\n\n## End';
+    expect(extractHeadingsFromMarkdown(source).map(({ text, line }) => [text, line])).toEqual([
+      ['Visible title', 10], ['End', 13]
+    ]);
+  });
+
+  it('removes form submission destinations while preserving task checkboxes', async () => {
+    const rendered = await render('<form action="https://example.com/submit"><input name="password"><button formaction="https://example.com/other" formtarget="_self">Send</button></form>\n\n- [x] Done');
+    const html = document.createElement('div');
+    html.innerHTML = rendered.html;
+    expect(html.querySelector('form, [action], [formaction], [formtarget]')).toBeNull();
+    expect(html.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(true);
   });
 });
 

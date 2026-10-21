@@ -63,6 +63,7 @@
   onMount(() => {
     previewHost.addEventListener('click', handleClick);
     previewHost.addEventListener('auxclick', handleAuxClick);
+    previewHost.addEventListener('submit', preventSubmit);
     previewHost.addEventListener('scroll', scheduleReadingPositionUpdate, { passive: true });
     previewHost.addEventListener('load', invalidateLayout, true);
     previewHost.addEventListener('toggle', invalidateLayout, true);
@@ -71,6 +72,7 @@
     return () => {
       previewHost.removeEventListener('click', handleClick);
       previewHost.removeEventListener('auxclick', handleAuxClick);
+      previewHost.removeEventListener('submit', preventSubmit);
       previewHost.removeEventListener('scroll', scheduleReadingPositionUpdate);
       dispatch('position', previewHost.scrollTop);
       renderToken += 1;
@@ -195,9 +197,13 @@
 
   function handleAuxClick(event: MouseEvent) {
     const target = event.target as Element | null;
-    if (event.button === 1 && target?.closest('a[href]')) {
+    if (event.button === 1 && target?.closest('a[href], area[href]')) {
       handleClick(event);
     }
+  }
+
+  function preventSubmit(event: Event) {
+    event.preventDefault();
   }
 
   function handleClick(event: MouseEvent) {
@@ -227,8 +233,8 @@
       return;
     }
 
-    const link = target?.closest('a');
-    if (!(link instanceof HTMLAnchorElement)) return;
+    const link = target?.closest('a, area');
+    if (!(link instanceof HTMLElement || link instanceof SVGElement)) return;
     const href = link.getAttribute('href')?.trim();
     if (href === undefined) return;
     event.preventDefault();

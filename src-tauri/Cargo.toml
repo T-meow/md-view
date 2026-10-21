@@ -3,6 +3,7 @@ name = "md-view"
 version = "1.2.1"
 description = "Lightweight local Markdown reader and editor"
 authors = ["Ferris"]
+license = "MIT"
 edition = "2021"
 rust-version = "1.88"
 
@@ -28,6 +29,7 @@ notify = "=8.2.0"
 trash = "=5.2.8"
 tempfile = "3.23"
 blake3 = "1.8"
+pulldown-cmark = { version = "0.13", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }

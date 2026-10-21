@@ -12,6 +12,7 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     environment: 'jsdom',
+    css: { include: [/katex/, /highlight\.js/] },
     restoreMocks: true,
     maxWorkers: 2
   }

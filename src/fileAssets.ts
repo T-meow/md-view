@@ -1,6 +1,6 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 
-const EXTERNAL_SCHEME_PATTERN = /^(?:https?:|data:|blob:|asset:)/i;
+const EXTERNAL_SCHEME_PATTERN = /^(?:https?:|data:|blob:|asset:|\/\/)/i;
 const FILE_SCHEME_PATTERN = /^file:\/\//i;
 const UNKNOWN_SCHEME_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
 const WINDOWS_ABSOLUTE_PATTERN = /^[a-zA-Z]:[\\/]/;

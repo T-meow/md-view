@@ -63,7 +63,13 @@ export function postProcessMarkdownHtml(
     }
   });
 
-  const links = template.content.querySelectorAll('a[href]');
+  // SVG links can use xlink:href; normalize before applying the same routing rules.
+  template.content.querySelectorAll('a').forEach((node) => {
+    const href = node.getAttribute('xlink:href');
+    if (href && !node.hasAttribute('href')) node.setAttribute('href', href);
+    node.removeAttribute('xlink:href');
+  });
+  const links = template.content.querySelectorAll('a[href], area[href]');
   links.forEach((node) => {
     const href = (node.getAttribute('href') ?? '').trim();
     context.linkTargets?.push({ href, kind: 'link' });
@@ -85,9 +91,10 @@ export function postProcessMarkdownHtml(
 
   const renderedHeadings = template.content.querySelectorAll('h1,h2,h3,h4,h5,h6');
   const usedIds = new Set(context.headings.map((heading) => heading.anchor));
+  const headingsByLine = new Map(context.headings.map((heading) => [heading.line, heading]));
   const slugCounts = new Map<string, number>();
   renderedHeadings.forEach((node, index) => {
-    const heading = context.headings[index];
+    const heading = headingsByLine.get(Number(node.getAttribute('data-outline-line')));
     if (!heading) return;
     node.setAttribute('id', stableHeadingId(heading, index));
     node.setAttribute('data-outline-line', String(heading.line));
@@ -106,6 +113,8 @@ export function postProcessMarkdownHtml(
   });
 
   return DOMPurify.sanitize(template.innerHTML, {
+    FORBID_TAGS: ['form'],
+    FORBID_ATTR: ['action', 'formaction', 'form', 'formtarget'],
     ADD_TAGS: SAFE_EXTRA_TAGS,
     ADD_ATTR: [
       ...SAFE_BASE_ATTRIBUTES,

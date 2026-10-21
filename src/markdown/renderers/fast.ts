@@ -65,10 +65,11 @@ export function renderFastMarkdown(source: string, context: MarkdownRenderContex
     if (heading) {
       flushBlocks();
       html.push(
-        `<h${heading.level} id="${escapeAttribute(heading.anchor)}" data-outline-line="${heading.line}">${renderInline(
+        `<h${heading.level} id="${escapeAttribute(heading.anchor)}" data-outline-line="${heading.line}">${escapeHtml(
           heading.text
         )}</h${heading.level}>`
       );
+      index = (heading.endLine ?? lineNumber) - 1;
       continue;
     }
 
@@ -112,15 +113,17 @@ export function renderFastMarkdown(source: string, context: MarkdownRenderContex
 }
 
 function readHeading(line: string, headings: Heading[], lineNumber: number) {
+  const outlineHeading = headings.find((heading) => heading.line === lineNumber);
+  if (outlineHeading) return outlineHeading;
   const match = line.match(/^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
   if (!match) return null;
   const text = (match[2] ?? '').trim();
   if (!text) return null;
-  const outlineHeading = headings.find((heading) => heading.line === lineNumber);
   return {
-    anchor: outlineHeading?.anchor || `heading-${lineNumber}`,
+    anchor: `heading-${lineNumber}`,
     level: match[1]?.length ?? 1,
     line: lineNumber,
+    endLine: lineNumber,
     text
   };
 }

@@ -32,12 +32,14 @@
   import { applyTheme, BACKGROUND_IMAGE_STORAGE_KEY, findTheme, THEME_STORAGE_KEY, themes } from './themes';
   import { loadLanguage, saveLanguage, text, type Language } from './i18n';
   import { appVersion } from './edition';
+  import licenseText from '../LICENSE?raw';
   import * as api from './api';
   import type { DirectoryEntry, Heading, ViewMode } from './types';
   import type { SearchItem } from './state/search';
   import { modalFocus } from './state/modal';
   import { calculatePaneLayout, resizePane, type PaneSide } from './state/layout';
   import type { EditorState } from '@codemirror/state';
+  import type { HtmlExportOptions } from './markdown/exportHtml';
   import './desktop.css';
 
   export let editionDisplayName = 'md-view';
@@ -48,7 +50,7 @@
   export let markdownStatus = '';
   export let settingsPanelComponent: any = null;
   export let enableHeadingSearch = false;
-  export let exportHtmlFile: ((path: string, html: string) => Promise<void>) | undefined = undefined;
+  export let exportHtmlFile: ((path: string, options: HtmlExportOptions) => Promise<void>) | undefined = undefined;
 
   const desktop = createDesktop();
   const { documents, workspace, search, preferences, status, saving, prompt } = desktop;
@@ -290,7 +292,8 @@
   }
   async function exportHtml() {
     if (!active || !renderedHtml || !exportHtmlFile) return;
-    const title = filename(active.path).replace(/[&<>"']/g, '');
+    const title = filename(active.path);
+    const markdownPath = active.path;
     const body = renderedHtml;
     const exportLanguage = language;
     const path = await save({
@@ -299,9 +302,8 @@
       filters: [{ name: 'HTML', extensions: ['html'] }]
     });
     if (!path) return;
-    const html = `<!doctype html><html lang="${exportLanguage}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{font:16px/1.75 system-ui,sans-serif;max-width:920px;margin:40px auto;padding:0 24px;color:#243330}img{max-width:100%}pre{overflow:auto;padding:16px;background:#f2f5f4}table{border-collapse:collapse;display:block;overflow:auto}td,th{border:1px solid #ccd7d3;padding:8px}blockquote{border-left:3px solid #91aaa1;padding-left:16px}</style></head><body><article>${body}</article></body></html>`;
     try {
-      await exportHtmlFile(path, html);
+      await exportHtmlFile(path, { html: body, title, language: exportLanguage, markdownPath });
       status.set('HTML 已导出');
     } catch (error) {
       await desktop.error(error);
@@ -860,7 +862,7 @@
           <dt>{t.about.author}</dt>
           <dd>T-meow</dd>
           <dt>{t.about.license}</dt>
-          <dd>WTFPL v2</dd>
+          <dd><details><summary>MIT</summary><pre style="white-space:pre-wrap;max-height:240px;overflow:auto">{licenseText}</pre></details></dd>
         </dl>
         <div class="settings-buttons">
           <a

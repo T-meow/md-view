@@ -1,5 +1,21 @@
 # 更新日志 / Changelog
 
+## 未发布 / Unreleased
+
+- 项目迁移至 MIT 许可证，同步应用、官网、npm/Cargo 元数据和打包配置；继续不接受 PR，补充反馈与安全报告说明。
+- Windows 文件判断区分符号链接、目录联接和云文件，避免 OneDrive 按需文件被错误过滤或拒绝保存、移动。
+- 标题索引支持 Setext、多行标题和准确的围栏语法，预览通过源行号绑定锚点，避免大纲错位。
+- 禁止 Markdown 表单提交，统一 SVG、图像映射与普通链接的点击处理，限制桌面窗口导航到应用来源。
+- HTML 导出内嵌本地图片、公式字体和高亮样式，移除内部路径及无效控件；保留相对文档链接，绝对本地链接转为普通文字。必要图片无法读取时取消导出。
+
+### English
+
+- Migrate the project to MIT across documentation, app, website, package metadata, and bundling. Continue not accepting PRs; document feedback and security reporting.
+- Distinguish Windows cloud files from symbolic links and junctions so OneDrive Files On-Demand entries are not rejected as links.
+- Parse Setext, multiline, and fenced Markdown headings and attach preview anchors to source lines.
+- Block document form submissions, route SVG and image-map links consistently, and restrict desktop navigation to the application origin.
+- Embed local images, math fonts, and highlighting in HTML exports; remove internal paths and inactive controls. Retain relative document links, disable absolute local links, and fail clearly when required images cannot be read.
+
 ## 1.2.1 — 2026-10-11
 
 - 本地 `.md` / `.markdown` 链接在应用标签页中打开；其他本地文件及文件夹交给系统默认程序，例如 `.godot` 工程和 `.cmd` 启动器。

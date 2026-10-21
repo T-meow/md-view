@@ -52,6 +52,8 @@ Both editions share the desktop interface, file management and saving behavior. 
 - File scanning respects `.gitignore`, `.ignore` and custom exclusions, and does not traverse symbolic links or junctions by default.
 - Visual editing preserves original Markdown for untouched blocks where possible. Use source mode for complex syntax; visual editing undo history is not persisted across tabs.
 
+Plus HTML export embeds local images (up to 20 MiB each), math fonts, and highlighting styles, and removes internal application paths. Relative document links are retained; distribute companion documents with the same directory structure. Absolute local links become plain text. Remote images keep their original URLs and require network access. An unreadable required image stops the export with an error.
+
 The online demo processes imported text in your browser and provides source editing, previews and download exports. Use the desktop app for direct file access, folder management and drafts. Remote images in documents are still loaded from their original URLs.
 
 ## Keyboard shortcuts
@@ -112,6 +114,6 @@ See the [development notes](docs/load-performance-plan.md) for the architecture 
 
 ## Feedback and license
 
-Report problems through [GitHub Issues](https://github.com/T-meow/md-view/issues), including your system, version, reproduction steps and a minimal document with private information removed. This project does not accept PRs. You are welcome to fork, modify, build and distribute it for your needs.
+Report problems through [GitHub Issues](https://github.com/T-meow/md-view/issues), including your system, version, reproduction steps and a minimal document with private information removed. This project does not accept PRs. You are welcome to fork, modify, build and distribute it for your needs. See [feedback and maintenance](CONTRIBUTING.md) and the [security reporting process](SECURITY.md).
 
-By [T-meow](https://github.com/T-meow), under [WTFPL v2](LICENSE). Provided as is, without express or implied warranties. You assume the risks of using, modifying and distributing it.
+By [T-meow](https://github.com/T-meow), under the [MIT License](LICENSE). Use, modification, and distribution are permitted; retain the copyright and license notice. Provided as is, without express or implied warranties. Third-party dependencies, fonts, and icons retain their respective licenses.

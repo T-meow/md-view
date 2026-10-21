@@ -58,7 +58,7 @@ async function setup(content: string) {
   await vi.waitFor(() => expect(document.querySelector('.markdown-preview a')).not.toBeNull());
   return document.querySelector<HTMLAnchorElement>('.markdown-preview a')!;
 }
-function click(link: HTMLAnchorElement, type: 'click' | 'auxclick' = 'click') {
+function click(link: Element, type: 'click' | 'auxclick' = 'click') {
   const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: type === 'auxclick' ? 1 : 0 });
   (link.querySelector('strong') ?? link).dispatchEvent(event);
   expect(event.defaultPrevented).toBe(true);
@@ -152,6 +152,20 @@ describe.each(['Lite', 'Plus'])('%s local document navigation', (edition) => {
     click(link, 'auxclick');
     expect(mocks.external).toHaveBeenCalledExactlyOnceWith('https://example.com/note.md');
     expect(local).not.toHaveBeenCalled();
+  });
+
+  it.each(['href', 'xlink:href'])('routes SVG %s links through the system browser', async (attribute) => {
+    await setup(`<svg xmlns="http://www.w3.org/2000/svg"><a ${attribute}="https://example.com/"><text>Website</text></a></svg>`);
+    const link = document.querySelector('.markdown-preview svg a')!;
+    click(link);
+    expect(mocks.external).toHaveBeenCalledExactlyOnceWith('https://example.com/');
+    expect(local).not.toHaveBeenCalled();
+  });
+
+  it('routes image-map links through the same handler', async () => {
+    await setup('<a href="#intro">anchor</a><map name="map"><area shape="rect" coords="0,0,10,10" href="https://example.com/map"></map>');
+    click(document.querySelector('.markdown-preview area')!, 'auxclick');
+    expect(mocks.external).toHaveBeenCalledExactlyOnceWith('https://example.com/map');
   });
 });
 

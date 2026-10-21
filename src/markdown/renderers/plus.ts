@@ -12,6 +12,7 @@ import 'highlight.js/styles/github.css';
 import { defaultPlusPreferences, normalizePlusPreferences, type PlusPreferences } from '../../plusPreferences';
 import type { MarkdownRenderContext, MarkdownRenderResult } from './shared';
 import { postProcessMarkdownHtml } from './shared';
+import { markHeadingPositions } from '../../outline';
 
 type MermaidModule = typeof import('mermaid');
 type FrontmatterBlock = {
@@ -75,6 +76,7 @@ function createProcessor(preferences: PlusPreferences, frontmatter: FrontmatterB
   }
 
   processor
+    .use(markHeadingPositions)
     .use(renderFrontmatter(preferences, frontmatter))
     .use(remarkRehype, { allowDangerousHtml: true });
 
